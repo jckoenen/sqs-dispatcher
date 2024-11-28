@@ -20,8 +20,8 @@ repositories { mavenCentral() }
 kotlin { jvmToolchain(21) }
 
 testlogger {
-    theme = ThemeType.MOCHA
-    slowThreshold = 1.seconds.inWholeMilliseconds
+    theme = ThemeType.STANDARD_PARALLEL
+    slowThreshold = 3.seconds.inWholeMilliseconds
 }
 
 dependencies {
@@ -42,6 +42,8 @@ dependencies {
     compileOnly(libs.slf4j.api)
 
     testImplementation(libs.logback.classic)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.kotlinx.coroutines.debug)
 
     testImplementation(platform(libs.kotest.bom))
     testImplementation(libs.kotest.runner.junit5)
@@ -61,7 +63,8 @@ tasks {
         val stableKeywords = listOf("release", "final", "ga")
 
         fun isStable(version: String): Boolean =
-            stableKeywords.any { version.contains(it, ignoreCase = true) } || stableVersion.matches(version)
+            stableKeywords.any { version.contains(it, ignoreCase = true) } ||
+                stableVersion.matches(version)
 
         gradleReleaseChannel = GradleReleaseChannel.CURRENT.id
         rejectVersionIf { isStable(candidate.version) != isStable(currentVersion) }
