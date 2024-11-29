@@ -1,13 +1,11 @@
-import com.adarshr.gradle.testlogger.theme.ThemeType
 import com.diffplug.gradle.spotless.BaseKotlinExtension
 import com.github.benmanes.gradle.versions.updates.gradle.GradleReleaseChannel
-import kotlin.time.Duration.Companion.seconds
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.versions)
     alias(libs.plugins.spotless)
-    alias(libs.plugins.testlogging)
     application
 }
 
@@ -18,11 +16,6 @@ version = "1.0-SNAPSHOT"
 repositories { mavenCentral() }
 
 kotlin { jvmToolchain(21) }
-
-testlogger {
-    theme = ThemeType.STANDARD_PARALLEL
-    slowThreshold = 3.seconds.inWholeMilliseconds
-}
 
 dependencies {
     api(platform(libs.aws.kotlin.bom))
@@ -50,6 +43,7 @@ dependencies {
     testImplementation(libs.kotest.core)
     testImplementation(libs.kotest.extensions.testcontainers)
     testImplementation(libs.kotest.extensions.arrow)
+    testImplementation(libs.kotest.extensions.xml)
 
     testImplementation(platform(libs.testcontainers.bom))
     testImplementation(libs.testcontainers.java)
@@ -57,7 +51,15 @@ dependencies {
 }
 
 tasks {
-    test { useJUnitPlatform() }
+    test {
+        useJUnitPlatform()
+        testLogging {
+            events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
+        }
+        reports.junitXml.required = false
+        systemProperty("gradle.build.dir", project.layout.buildDirectory.map { it.asFile.absolutePath }.get())
+    }
+
     dependencyUpdates {
         val stableVersion = "^[0-9,.v-]+(-r)?$".toRegex()
         val stableKeywords = listOf("release", "final", "ga")
