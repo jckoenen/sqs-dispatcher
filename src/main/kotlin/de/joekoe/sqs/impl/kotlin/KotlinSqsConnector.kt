@@ -37,4 +37,10 @@ internal class KotlinSqsConnector(
         queue: Queue,
         messages: List<Message<T>>,
     ): List<SqsConnector.FailedBatchEntry<T>> = sqsClient.deleteMessages(queue, messages)
+
+    override suspend fun <T : Any> extendMessageVisibility(
+        queue: Queue,
+        messages: List<Message<T>>,
+        duration: Duration,
+    ): List<SqsConnector.FailedBatchEntry<T>> = sqsClient.extendMessageVisibility(queue, messages, duration)
 }

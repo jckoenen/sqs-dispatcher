@@ -22,4 +22,10 @@ interface SqsConnector {
     suspend fun <T : Any> sendMessages(queue: Queue, messages: List<Message<T>>): List<FailedBatchEntry<T>>
 
     suspend fun <T : Any> deleteMessages(queue: Queue, messages: List<Message<T>>): List<FailedBatchEntry<T>>
+
+    suspend fun <T : Any> extendMessageVisibility(
+        queue: Queue,
+        messages: List<Message<T>>,
+        duration: Duration
+    ): List<FailedBatchEntry<T>>
 }
