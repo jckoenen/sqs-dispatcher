@@ -12,8 +12,6 @@ internal data class QueueArn private constructor(val accountId: String, val regi
     override fun toString(): String =
         StringJoiner(":").add("arn").add("aws").add("sqs").add(region).add(accountId).add(name.value).toString()
 
-    fun toUrl() = Queue.Url("https://sqs.$region.amazonaws.com/$accountId/${name.value}")
-
     companion object {
         private val logger = LoggerFactory.getLogger(QueueArn::class.java)
 

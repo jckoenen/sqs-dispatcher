@@ -59,11 +59,6 @@ internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListe
             client
         }
 
-    suspend fun container(): LocalStackContainer {
-        client.await() // to run the afterProject hook and ensure the container is started
-        return container
-    }
-
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun afterProject() {
         super.afterProject()
@@ -84,4 +79,6 @@ internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListe
             .replace(WORDS_CHARS_ONLY, "_")
             .takeLast(64)
             .let(Queue::Name)
+
+    fun TestScope.fifoQueueName() = Queue.Name(queueName().value + ".fifo")
 }

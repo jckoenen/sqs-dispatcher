@@ -1,7 +1,5 @@
 package de.joekoe.sqs.impl
 
-import aws.smithy.kotlin.runtime.net.url.Url
-import de.joekoe.sqs.Queue
 import de.joekoe.sqs.testinfra.SqsContainerExtension
 import de.joekoe.sqs.testinfra.SqsContainerExtension.queueName
 import io.kotest.core.spec.style.FreeSpec
@@ -38,8 +36,7 @@ class CreateQueueTest : FreeSpec({
 
                 created.name shouldBe existing.name
                 created.url shouldBe existing.url
-                created.dlqUrl?.accountSegment shouldBe existing.dlqUrl?.accountSegment
-                created.dlqUrl?.nameSegment shouldBe existing.dlqUrl?.nameSegment
+                created.dlqUrl shouldDenoteSameQueueAs existing.dlqUrl
             }
             "with existing dlq even though createdDlq = false" {
                 val existing = subject.getOrCreateQueue(queueName(), createDlq = true)
@@ -47,8 +44,7 @@ class CreateQueueTest : FreeSpec({
 
                 created.name shouldBe existing.name
                 created.url shouldBe existing.url
-                created.dlqUrl?.accountSegment shouldBe existing.dlqUrl?.accountSegment
-                created.dlqUrl?.nameSegment shouldBe existing.dlqUrl?.nameSegment
+                created.dlqUrl shouldDenoteSameQueueAs existing.dlqUrl
             }
             "with newly created dlq" {
                 val existing = subject.getOrCreateQueue(queueName(), createDlq = false)
@@ -67,9 +63,3 @@ class CreateQueueTest : FreeSpec({
         }
     }
 })
-
-private val Queue.Url.accountSegment: String
-    get() = Url.parse(value).path.segments.last().decoded
-
-private val Queue.Url.nameSegment: String
-    get() = Url.parse(value).path.segments.dropLast(1).last().decoded
