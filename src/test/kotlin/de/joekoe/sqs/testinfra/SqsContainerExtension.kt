@@ -7,7 +7,7 @@ import aws.smithy.kotlin.runtime.net.url.Url
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
-import de.joekoe.sqs.impl.KotlinSqsConnector
+import de.joekoe.sqs.impl.kotlin.KotlinSqsConnector
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.core.listeners.AfterProjectListener
 import io.kotest.core.listeners.BeforeProjectListener

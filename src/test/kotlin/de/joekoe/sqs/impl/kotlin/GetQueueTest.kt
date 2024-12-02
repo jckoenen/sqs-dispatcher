@@ -1,5 +1,6 @@
-package de.joekoe.sqs.impl
+package de.joekoe.sqs.impl.kotlin
 
+import de.joekoe.sqs.impl.shouldDenoteSameQueueAs
 import de.joekoe.sqs.testinfra.SqsContainerExtension
 import de.joekoe.sqs.testinfra.SqsContainerExtension.fifoQueueName
 import de.joekoe.sqs.testinfra.SqsContainerExtension.queueName
