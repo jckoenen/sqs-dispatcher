@@ -10,7 +10,6 @@ import de.joekoe.sqs.QueueImpl
 import de.joekoe.sqs.SqsConnector
 import de.joekoe.sqs.impl.QueueArn
 import de.joekoe.sqs.impl.RedrivePolicy
-import de.joekoe.sqs.impl.kotlin.KotlinSqsConnector.Companion.logger
 
 internal suspend fun SqsClient.getOrCreateQueue(
     json: ObjectMapper,
@@ -38,7 +37,7 @@ internal suspend fun SqsClient.getOrCreateQueue(
                                 ),
                         )
                 }
-                logger
+                KotlinSqsConnector.logger
                     .atInfo()
                     .addKeyValue("queue.name", name.value)
                     .addKeyValue("dlq.url", created.value)
@@ -47,7 +46,7 @@ internal suspend fun SqsClient.getOrCreateQueue(
             }
             createDlq -> existingDlqUrl
             else -> {
-                logger
+                KotlinSqsConnector.logger
                     .atWarn()
                     .addKeyValue("queue.name", name.value)
                     .addKeyValue("dlq.url", existingDlqUrl.value)
@@ -79,7 +78,7 @@ private suspend fun SqsClient.doCreateQueue(
     }
     val url = Queue.Url(response.queueUrl!!)
 
-    logger
+    KotlinSqsConnector.logger
         .atInfo()
         .addKeyValue("queue.name", name.value)
         .addKeyValue("queue.url", url.value)

@@ -16,6 +16,8 @@ internal class KotlinSqsConnector(
 ) : SqsConnector {
     companion object {
         val logger: Logger = LoggerFactory.getLogger(KotlinSqsConnector::class.java)
+
+        const val BATCH_SIZE = 10
     }
 
     override suspend fun getQueue(name: Queue.Name): Queue? = sqsClient.getQueue(json, name, options)
@@ -26,8 +28,13 @@ internal class KotlinSqsConnector(
     override suspend fun receiveMessages(queue: Queue, timeout: Duration): List<Message<String>> =
         sqsClient.receiveMessages(queue, timeout)
 
-    override suspend fun sendMessages(
+    override suspend fun <T : Any> sendMessages(
         queue: Queue,
-        messages: List<Message<*>>,
-    ): List<SqsConnector.SendFailure<*>> = sqsClient.sendMessages(json, queue, messages)
+        messages: List<Message<T>>,
+    ): List<SqsConnector.FailedBatchEntry<T>> = sqsClient.sendMessages(json, queue, messages)
+
+    override suspend fun <T : Any> deleteMessages(
+        queue: Queue,
+        messages: List<Message<T>>,
+    ): List<SqsConnector.FailedBatchEntry<T>> = sqsClient.deleteMessages(queue, messages)
 }

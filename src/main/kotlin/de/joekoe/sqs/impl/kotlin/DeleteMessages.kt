@@ -1,30 +1,26 @@
 package de.joekoe.sqs.impl.kotlin
 
 import aws.sdk.kotlin.services.sqs.SqsClient
-import aws.sdk.kotlin.services.sqs.model.SendMessageBatchRequestEntry
-import aws.sdk.kotlin.services.sqs.sendMessageBatch
-import com.fasterxml.jackson.databind.ObjectMapper
+import aws.sdk.kotlin.services.sqs.deleteMessageBatch
+import aws.sdk.kotlin.services.sqs.model.DeleteMessageBatchRequestEntry
 import de.joekoe.sqs.Message
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
 import kotlinx.coroutines.flow.map
 
-internal suspend fun <T : Any> SqsClient.sendMessages(
-    json: ObjectMapper,
+internal suspend fun <T : Any> SqsClient.deleteMessages(
     queue: Queue,
     messages: List<Message<T>>,
 ): List<SqsConnector.FailedBatchEntry<T>> =
     messages
-        .chunkForBatching { msg ->
-            SendMessageBatchRequestEntry {
-                id = msg.id.value
-                messageBody = msg.content?.let(json::writeValueAsString)
-                messageDeduplicationId = (msg as? Message.Fifo<*>)?.deduplicationId?.value
-                messageGroupId = (msg as? Message.Fifo<*>)?.groupId?.value
+        .chunkForBatching { message ->
+            DeleteMessageBatchRequestEntry {
+                id = message.id.value
+                receiptHandle = message.receiptHandle.value
             }
         }
         .map { (messages, batch) ->
-            val response = sendMessageBatch {
+            val response = deleteMessageBatch {
                 queueUrl = queue.url.value
                 entries = batch
             }

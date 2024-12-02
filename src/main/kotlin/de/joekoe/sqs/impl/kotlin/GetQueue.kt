@@ -8,7 +8,6 @@ import de.joekoe.sqs.FifoQueueImpl
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.QueueImpl
 import de.joekoe.sqs.SqsConnector
-import de.joekoe.sqs.impl.kotlin.KotlinSqsConnector.Companion.logger
 
 internal suspend fun SqsClient.getQueue(
     json: ObjectMapper,
@@ -23,7 +22,7 @@ internal suspend fun SqsClient.getQueue(
         }
 
     if (url == null) {
-        logger.atInfo().addKeyValue("queue.name", name.value).log("Could not resolve queue url")
+        KotlinSqsConnector.logger.atInfo().addKeyValue("queue.name", name.value).log("Could not resolve queue url")
         return null
     }
 

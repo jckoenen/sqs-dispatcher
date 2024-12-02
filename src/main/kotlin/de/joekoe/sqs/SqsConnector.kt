@@ -6,7 +6,7 @@ import kotlin.time.Duration.Companion.seconds
 interface SqsConnector {
     data class Options(val defaultVisibilityTimeout: Duration = 30.seconds)
 
-    data class SendFailure<T : Any>(
+    data class FailedBatchEntry<T : Any>(
         val message: Message<T>,
         val code: String,
         val errorMessage: String?,
@@ -19,5 +19,7 @@ interface SqsConnector {
 
     suspend fun receiveMessages(queue: Queue, timeout: Duration = 10.seconds): List<Message<String>>
 
-    suspend fun sendMessages(queue: Queue, messages: List<Message<*>>): List<SendFailure<*>>
+    suspend fun <T : Any> sendMessages(queue: Queue, messages: List<Message<T>>): List<FailedBatchEntry<T>>
+
+    suspend fun <T : Any> deleteMessages(queue: Queue, messages: List<Message<T>>): List<FailedBatchEntry<T>>
 }
