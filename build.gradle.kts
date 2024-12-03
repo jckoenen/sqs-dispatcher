@@ -25,6 +25,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.slf4j)
 
+    implementation(libs.kotlinx.datetime)
+
     api(platform(libs.jackson.bom))
     api(libs.jackson.databind)
     implementation(libs.jackson.kotlin)

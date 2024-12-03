@@ -15,7 +15,7 @@ internal suspend fun SqsClient.receiveMessages(
     timeout: Duration,
 ): List<Message<String>> {
     val response = receiveMessage {
-        maxNumberOfMessages = KotlinSqsConnector.BATCH_SIZE
+        maxNumberOfMessages = SQS_BATCH_SIZE
         waitTimeSeconds = timeout.inWholeSeconds.toInt()
         queueUrl = queue.url.value
         messageAttributeNames = listOf("*")

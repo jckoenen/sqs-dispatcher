@@ -37,7 +37,7 @@ internal suspend fun SqsClient.getOrCreateQueue(
                                 ),
                         )
                 }
-                KotlinSqsConnector.logger
+                SqsConnector.logger
                     .atInfo()
                     .addKeyValue("queue.name", name.value)
                     .addKeyValue("dlq.url", created.value)
@@ -46,7 +46,7 @@ internal suspend fun SqsClient.getOrCreateQueue(
             }
             createDlq -> existingDlqUrl
             else -> {
-                KotlinSqsConnector.logger
+                SqsConnector.logger
                     .atWarn()
                     .addKeyValue("queue.name", name.value)
                     .addKeyValue("dlq.url", existingDlqUrl.value)
@@ -78,7 +78,7 @@ private suspend fun SqsClient.doCreateQueue(
     }
     val url = Queue.Url(response.queueUrl!!)
 
-    KotlinSqsConnector.logger
+    SqsConnector.logger
         .atInfo()
         .addKeyValue("queue.name", name.value)
         .addKeyValue("queue.url", url.value)

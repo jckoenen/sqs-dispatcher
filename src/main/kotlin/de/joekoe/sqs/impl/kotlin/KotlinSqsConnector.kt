@@ -6,20 +6,12 @@ import de.joekoe.sqs.Message
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
 import kotlin.time.Duration
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 
 internal class KotlinSqsConnector(
     private val sqsClient: SqsClient,
     private val json: ObjectMapper,
     private val options: SqsConnector.Options,
 ) : SqsConnector {
-    companion object {
-        val logger: Logger = LoggerFactory.getLogger(KotlinSqsConnector::class.java)
-
-        const val BATCH_SIZE = 10
-    }
-
     override suspend fun getQueue(name: Queue.Name): Queue? = sqsClient.getQueue(json, name, options)
 
     override suspend fun getOrCreateQueue(name: Queue.Name, createDlq: Boolean): Queue =

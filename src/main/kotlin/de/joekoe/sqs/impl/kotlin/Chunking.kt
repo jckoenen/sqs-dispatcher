@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.fold
 import kotlinx.coroutines.flow.map
 
+internal const val SQS_BATCH_SIZE = 10
+
 internal inline fun <M : Any, C : Any> Collection<Message<M>>.chunkForBatching(crossinline f: (Message<M>) -> C) =
-    chunked(KotlinSqsConnector.BATCH_SIZE) { it.associateBy(Message<*>::id) }
-        .asFlow()
-        .map { chunk -> chunk to chunk.values.map(f) }
+    chunked(SQS_BATCH_SIZE) { it.associateBy(Message<*>::id) }.asFlow().map { chunk -> chunk to chunk.values.map(f) }
 
 internal suspend fun <T> Flow<Collection<T>>.flattenToList() = fold(emptyList(), List<T>::plus)

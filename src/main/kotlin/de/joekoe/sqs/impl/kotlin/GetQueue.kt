@@ -22,7 +22,7 @@ internal suspend fun SqsClient.getQueue(
         }
 
     if (url == null) {
-        KotlinSqsConnector.logger.atInfo().addKeyValue("queue.name", name.value).log("Could not resolve queue url")
+        SqsConnector.logger.atInfo().addKeyValue("queue.name", name.value).log("Could not resolve queue url")
         return null
     }
 

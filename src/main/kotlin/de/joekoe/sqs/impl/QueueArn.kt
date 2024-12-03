@@ -3,14 +3,24 @@ package de.joekoe.sqs.impl
 import arrow.core.flatMap
 import aws.smithy.kotlin.runtime.net.url.Url
 import de.joekoe.sqs.Queue
-import java.util.*
 import org.slf4j.LoggerFactory
 
 @ConsistentCopyVisibility
 internal data class QueueArn private constructor(val accountId: String, val region: String, val name: Queue.Name) {
 
-    override fun toString(): String =
-        StringJoiner(":").add("arn").add("aws").add("sqs").add(region).add(accountId).add(name.value).toString()
+    override fun toString(): String = buildString {
+        append("arn")
+            .append(':')
+            .append("aws")
+            .append(':')
+            .append("sqs")
+            .append(':')
+            .append(region)
+            .append(':')
+            .append(accountId)
+            .append(':')
+            .append(name.value)
+    }
 
     companion object {
         private val logger = LoggerFactory.getLogger(QueueArn::class.java)
