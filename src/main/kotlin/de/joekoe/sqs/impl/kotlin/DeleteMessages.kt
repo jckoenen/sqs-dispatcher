@@ -19,14 +19,14 @@ internal suspend fun <T : Any> SqsClient.deleteMessages(
                 receiptHandle = message.receiptHandle.value
             }
         }
-        .map { (messages, batch) ->
+        .map { (chunk, batch) ->
             val response = deleteMessageBatch {
                 queueUrl = queue.url.value
                 entries = batch
             }
             response.failed.map {
                 SqsConnector.FailedBatchEntry(
-                    message = messages.getValue(Message.Id(it.id)),
+                    message = chunk.getValue(Message.Id(it.id)),
                     code = it.code,
                     errorMessage = it.message,
                     senderFault = it.senderFault,

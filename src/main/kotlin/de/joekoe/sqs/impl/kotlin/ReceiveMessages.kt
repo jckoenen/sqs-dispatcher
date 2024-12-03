@@ -21,18 +21,25 @@ internal suspend fun SqsClient.receiveMessages(
         messageAttributeNames = listOf("*")
     }
 
-    return response.messages.orEmpty().map(if (queue is Queue.Fifo) ::toFifoMessage else ::toMessage)
+    return response.messages.orEmpty().map { message ->
+        if (queue is Queue.Fifo) {
+            toFifoMessage(message, queue)
+        } else {
+            toMessage(message, queue)
+        }
+    }
 }
 
-private fun toMessage(message: SqsMessage) =
+private fun toMessage(message: SqsMessage, queue: Queue) =
     MessageImpl(
         id = Message.Id(message.messageId!!),
         receiptHandle = Message.ReceiptHandle(message.receiptHandle!!),
         attributes = message.stringAttributes(),
         content = message.body,
+        queue = queue,
     )
 
-private fun toFifoMessage(message: SqsMessage): FifoMessageImpl<String> {
+private fun toFifoMessage(message: SqsMessage, queue: Queue.Fifo): FifoMessageImpl<String> {
     val attrs = message.stringAttributes()
     return FifoMessageImpl(
         id = Message.Id(message.messageId!!),
@@ -42,6 +49,7 @@ private fun toFifoMessage(message: SqsMessage): FifoMessageImpl<String> {
         groupId = Message.Fifo.GroupId(attrs.getValue(MessageSystemAttributeName.MessageGroupId.value)),
         deduplicationId =
             Message.Fifo.DeduplicationId(attrs.getValue(MessageSystemAttributeName.MessageDeduplicationId.value)),
+        queue = queue,
     )
 }
 
