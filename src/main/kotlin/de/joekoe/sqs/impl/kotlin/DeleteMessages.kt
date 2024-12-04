@@ -8,25 +8,26 @@ import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
 import kotlinx.coroutines.flow.map
 
-internal suspend fun <T : Any> SqsClient.deleteMessages(
+internal suspend fun SqsClient.deleteMessages(
     queue: Queue,
-    messages: List<Message<T>>,
-): List<SqsConnector.FailedBatchEntry<T>> =
-    messages
-        .chunkForBatching { message ->
+    handles: Collection<Message.ReceiptHandle>,
+): List<SqsConnector.FailedBatchEntry<Message.ReceiptHandle>> =
+    handles
+        .chunkForBatching { i, handle ->
             DeleteMessageBatchRequestEntry {
-                id = message.id.value
-                receiptHandle = message.receiptHandle.value
+                id = i.toString()
+                receiptHandle = handle.value
             }
         }
-        .map { (chunk, batch) ->
+        .map { chunk ->
+            val (inChunk, requestEntries) = chunk.unzip()
             val response = deleteMessageBatch {
                 queueUrl = queue.url.value
-                entries = batch
+                entries = requestEntries
             }
             response.failed.map {
                 SqsConnector.FailedBatchEntry(
-                    message = chunk.getValue(Message.Id(it.id)),
+                    reference = inChunk[it.id.toInt()],
                     code = it.code,
                     errorMessage = it.message,
                     senderFault = it.senderFault,

@@ -1,14 +1,14 @@
 package de.joekoe.sqs.impl.kotlin
 
-import de.joekoe.sqs.Message
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.fold
-import kotlinx.coroutines.flow.map
 
 internal const val SQS_BATCH_SIZE = 10
 
-internal inline fun <M : Any, C : Any> Collection<Message<M>>.chunkForBatching(crossinline f: (Message<M>) -> C) =
-    chunked(SQS_BATCH_SIZE) { it.associateBy(Message<*>::id) }.asFlow().map { chunk -> chunk to chunk.values.map(f) }
+internal inline fun <A : Any, B : Any> Iterable<A>.chunkForBatching(
+    crossinline f: (Int, A) -> B
+): Flow<List<Pair<A, B>>> =
+    withIndex().chunked(SQS_BATCH_SIZE) { chunk -> chunk.map { (i, v) -> v to f(i, v) } }.asFlow()
 
 internal suspend fun <T> Flow<Collection<T>>.flattenToList() = fold(emptyList(), List<T>::plus)

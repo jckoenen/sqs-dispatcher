@@ -1,10 +1,11 @@
 package de.joekoe.sqs.impl.kotlin
 
 import aws.sdk.kotlin.services.sqs.SqsClient
+import aws.sdk.kotlin.services.sqs.model.MessageAttributeValue
 import aws.sdk.kotlin.services.sqs.model.SendMessageBatchRequestEntry
 import aws.sdk.kotlin.services.sqs.sendMessageBatch
 import com.fasterxml.jackson.databind.ObjectMapper
-import de.joekoe.sqs.Message
+import de.joekoe.sqs.OutboundMessage
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
 import kotlinx.coroutines.flow.map
@@ -12,25 +13,28 @@ import kotlinx.coroutines.flow.map
 internal suspend fun <T : Any> SqsClient.sendMessages(
     json: ObjectMapper,
     queue: Queue,
-    messages: List<Message<T>>,
-): List<SqsConnector.FailedBatchEntry<T>> =
+    messages: Collection<OutboundMessage<T>>,
+): List<SqsConnector.FailedBatchEntry<OutboundMessage<T>>> =
     messages
-        .chunkForBatching { msg ->
+        .chunkForBatching { i, msg ->
             SendMessageBatchRequestEntry {
-                id = msg.id.value
-                messageBody = msg.content?.let(json::writeValueAsString)
-                messageDeduplicationId = (msg as? Message.Fifo<*>)?.deduplicationId?.value
-                messageGroupId = (msg as? Message.Fifo<*>)?.groupId?.value
+                id = i.toString()
+                messageAttributes = msg.attributes.mapValues { (_, v) -> MessageAttributeValue { stringValue = v } }
+                messageBody = json.writeValueAsString(msg.content)
+                messageDeduplicationId = msg.fifo?.deduplicationId?.value
+                messageGroupId = msg.fifo?.groupId?.value
             }
         }
-        .map { (messages, batch) ->
+        .map { chunk ->
+            val (inChunk, batch) = chunk.unzip()
+
             val response = sendMessageBatch {
                 queueUrl = queue.url.value
                 entries = batch
             }
             response.failed.map {
                 SqsConnector.FailedBatchEntry(
-                    message = messages.getValue(Message.Id(it.id)),
+                    reference = inChunk[it.id.toInt()],
                     code = it.code,
                     errorMessage = it.message,
                     senderFault = it.senderFault,

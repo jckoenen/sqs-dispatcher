@@ -9,7 +9,7 @@ interface SqsConnector {
     data class Options(val defaultVisibilityTimeout: Duration = 30.seconds)
 
     data class FailedBatchEntry<T : Any>(
-        val message: Message<T>,
+        val reference: T,
         val code: String,
         val errorMessage: String?,
         val senderFault: Boolean,
@@ -27,17 +27,17 @@ interface SqsConnector {
 
     suspend fun <T : Any> sendMessages(
         queue: Queue,
-        messages: List<Message<T>>,
-    ): List<FailedBatchEntry<T>>
+        messages: Collection<OutboundMessage<T>>,
+    ): List<FailedBatchEntry<OutboundMessage<T>>>
 
-    suspend fun <T : Any> deleteMessages(
+    suspend fun deleteMessages(
         queue: Queue,
-        messages: List<Message<T>>,
-    ): List<FailedBatchEntry<T>>
+        messages: Collection<Message.ReceiptHandle>,
+    ): List<FailedBatchEntry<Message.ReceiptHandle>>
 
-    suspend fun <T : Any> extendMessageVisibility(
+    suspend fun extendMessageVisibility(
         queue: Queue,
-        messages: List<Message<T>>,
+        messages: Collection<Message.ReceiptHandle>,
         duration: Duration,
-    ): List<FailedBatchEntry<T>>
+    ): List<FailedBatchEntry<Message.ReceiptHandle>>
 }

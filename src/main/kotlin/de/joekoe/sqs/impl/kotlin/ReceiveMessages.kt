@@ -35,7 +35,7 @@ private fun toMessage(message: SqsMessage, queue: Queue) =
         id = Message.Id(message.messageId!!),
         receiptHandle = Message.ReceiptHandle(message.receiptHandle!!),
         attributes = message.stringAttributes(),
-        content = message.body,
+        content = message.body.orEmpty(),
         queue = queue,
     )
 
@@ -45,7 +45,7 @@ private fun toFifoMessage(message: SqsMessage, queue: Queue.Fifo): FifoMessageIm
         id = Message.Id(message.messageId!!),
         receiptHandle = Message.ReceiptHandle(message.receiptHandle!!),
         attributes = attrs,
-        content = message.body,
+        content = message.body.orEmpty(),
         groupId = Message.Fifo.GroupId(attrs.getValue(MessageSystemAttributeName.MessageGroupId.value)),
         deduplicationId =
             Message.Fifo.DeduplicationId(attrs.getValue(MessageSystemAttributeName.MessageDeduplicationId.value)),

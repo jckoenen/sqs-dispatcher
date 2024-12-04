@@ -3,6 +3,7 @@ package de.joekoe.sqs.impl.kotlin
 import aws.sdk.kotlin.services.sqs.SqsClient
 import com.fasterxml.jackson.databind.ObjectMapper
 import de.joekoe.sqs.Message
+import de.joekoe.sqs.OutboundMessage
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
 import kotlin.time.Duration
@@ -22,17 +23,18 @@ internal class KotlinSqsConnector(
 
     override suspend fun <T : Any> sendMessages(
         queue: Queue,
-        messages: List<Message<T>>,
-    ): List<SqsConnector.FailedBatchEntry<T>> = sqsClient.sendMessages(json, queue, messages)
+        messages: Collection<OutboundMessage<T>>,
+    ): List<SqsConnector.FailedBatchEntry<OutboundMessage<T>>> = sqsClient.sendMessages(json, queue, messages)
 
-    override suspend fun <T : Any> deleteMessages(
+    override suspend fun deleteMessages(
         queue: Queue,
-        messages: List<Message<T>>,
-    ): List<SqsConnector.FailedBatchEntry<T>> = sqsClient.deleteMessages(queue, messages)
+        messages: Collection<Message.ReceiptHandle>,
+    ): List<SqsConnector.FailedBatchEntry<Message.ReceiptHandle>> = sqsClient.deleteMessages(queue, messages)
 
-    override suspend fun <T : Any> extendMessageVisibility(
+    override suspend fun extendMessageVisibility(
         queue: Queue,
-        messages: List<Message<T>>,
+        messages: Collection<Message.ReceiptHandle>,
         duration: Duration,
-    ): List<SqsConnector.FailedBatchEntry<T>> = sqsClient.extendMessageVisibility(queue, messages, duration)
+    ): List<SqsConnector.FailedBatchEntry<Message.ReceiptHandle>> =
+        sqsClient.extendMessageVisibility(queue, messages, duration)
 }
