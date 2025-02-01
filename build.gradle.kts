@@ -88,7 +88,8 @@ spotless {
             it.setMaxWidth(120)
             it.setBlockIndent(4)
             it.setContinuationIndent(4)
-            it.setRemoveUnusedImport(true)
+            it.setRemoveUnusedImports(true)
+            it.setManageTrailingCommas(false)
         }
         targetExcludeIfContentContains("import io.kotest.core.spec.style.")
     }

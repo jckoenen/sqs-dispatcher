@@ -37,8 +37,7 @@ internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListe
                     .atError()
                     .setCause(ex)
                     .log("Scope closed due to uncaught exception")
-            }
-        )
+            })
 
     private val client =
         scope.async(start = CoroutineStart.LAZY) {

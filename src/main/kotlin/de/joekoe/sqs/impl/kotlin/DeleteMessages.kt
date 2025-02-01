@@ -9,7 +9,7 @@ import de.joekoe.sqs.SqsConnector
 import kotlinx.coroutines.flow.map
 
 internal suspend fun SqsClient.deleteMessages(
-     queueUrl: Queue.Url,
+    queueUrl: Queue.Url,
     handles: Collection<Message.ReceiptHandle>,
 ): List<SqsConnector.FailedBatchEntry<Message.ReceiptHandle>> =
     handles
