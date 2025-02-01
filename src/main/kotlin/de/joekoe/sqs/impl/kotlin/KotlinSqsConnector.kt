@@ -22,19 +22,19 @@ internal class KotlinSqsConnector(
         sqsClient.receiveMessages(queue, timeout)
 
     override suspend fun <T : Any> sendMessages(
-        queue: Queue,
+        queueUrl: Queue.Url,
         messages: Collection<OutboundMessage<T>>,
-    ): List<SqsConnector.FailedBatchEntry<OutboundMessage<T>>> = sqsClient.sendMessages(json, queue, messages)
+    ): List<SqsConnector.FailedBatchEntry<OutboundMessage<T>>> = sqsClient.sendMessages(queueUrl, json, messages)
 
     override suspend fun deleteMessages(
-        queue: Queue,
+        queueUrl: Queue.Url,
         messages: Collection<Message.ReceiptHandle>,
-    ): List<SqsConnector.FailedBatchEntry<Message.ReceiptHandle>> = sqsClient.deleteMessages(queue, messages)
+    ): List<SqsConnector.FailedBatchEntry<Message.ReceiptHandle>> = sqsClient.deleteMessages(queueUrl, messages)
 
     override suspend fun extendMessageVisibility(
-        queue: Queue,
+        queueUrl: Queue.Url,
         messages: Collection<Message.ReceiptHandle>,
         duration: Duration,
     ): List<SqsConnector.FailedBatchEntry<Message.ReceiptHandle>> =
-        sqsClient.extendMessageVisibility(queue, messages, duration)
+        sqsClient.extendMessageVisibility(queueUrl, messages, duration)
 }

@@ -78,7 +78,7 @@ internal class VisibilityManager(
         log.log("Extending visibility")
 
         connector
-            .extendMessageVisibility(queue, messages, extensionDuration)
+            .extendMessageVisibility(queue.url, messages, extensionDuration)
             .onEach {
                 if (it.isMessageAlreadyDeleted()) {
                     logger

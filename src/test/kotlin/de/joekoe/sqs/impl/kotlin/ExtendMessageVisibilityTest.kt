@@ -25,15 +25,15 @@ class ExtendMessageVisibilityTest : FreeSpec({
             val queue = connector.getOrCreateQueue(queueName())
             val outbound = OutboundMessage(mapOf("foo" to "bar"))
 
-            connector.sendMessages(queue, listOf(outbound)) should beEmpty()
+            connector.sendMessages(queue.url, listOf(outbound)) should beEmpty()
             val received = flow { while (true) emit(connector.receiveMessages(queue)) }
                 .flatMapConcat { it.asFlow() }
                 .take(1)
                 .map { it.receiptHandle }
                 .toList()
 
-            connector.deleteMessages(queue, received) should beEmpty()
-            connector.extendMessageVisibility(queue, received, 5.seconds).forAll {
+            connector.deleteMessages(queue.url, received) should beEmpty()
+            connector.extendMessageVisibility(queue.url, received, 5.seconds).forAll {
                 it.isMessageAlreadyDeleted() shouldBe true
             }
         }

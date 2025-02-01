@@ -10,7 +10,7 @@ import kotlin.time.Duration
 import kotlinx.coroutines.flow.map
 
 internal suspend fun SqsClient.extendMessageVisibility(
-    queue: Queue,
+    queueUrl: Queue.Url,
     messages: Collection<Message.ReceiptHandle>,
     duration: Duration,
 ): List<SqsConnector.FailedBatchEntry<Message.ReceiptHandle>> =
@@ -25,7 +25,7 @@ internal suspend fun SqsClient.extendMessageVisibility(
         .map { chunk ->
             val (inChunk, batch) = chunk.unzip()
             val response = changeMessageVisibilityBatch {
-                queueUrl = queue.url.value
+                this.queueUrl = queueUrl.value
                 entries = batch
             }
 

@@ -26,17 +26,17 @@ interface SqsConnector {
     suspend fun receiveMessages(queue: Queue, timeout: Duration = 10.seconds): List<Message<String>>
 
     suspend fun <T : Any> sendMessages(
-        queue: Queue,
+        queueUrl: Queue.Url,
         messages: Collection<OutboundMessage<T>>,
     ): List<FailedBatchEntry<OutboundMessage<T>>>
 
     suspend fun deleteMessages(
-        queue: Queue,
+        queueUrl: Queue.Url,
         messages: Collection<Message.ReceiptHandle>,
     ): List<FailedBatchEntry<Message.ReceiptHandle>>
 
     suspend fun extendMessageVisibility(
-        queue: Queue,
+        queueUrl: Queue.Url,
         messages: Collection<Message.ReceiptHandle>,
         duration: Duration,
     ): List<FailedBatchEntry<Message.ReceiptHandle>>

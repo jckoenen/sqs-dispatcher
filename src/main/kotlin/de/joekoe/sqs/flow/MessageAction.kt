@@ -14,8 +14,5 @@ sealed interface MessageAction : MessageBound {
         override val receiptHandle: Message.ReceiptHandle,
     ) : MessageAction
 
-    data class MoveMessageToDlq(
-        override val queue: Queue,
-        override val receiptHandle: Message.ReceiptHandle,
-    ) : MessageAction
+    data class MoveMessageToDlq(val message: Message<*>) : MessageAction, MessageBound by message
 }

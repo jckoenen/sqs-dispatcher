@@ -11,8 +11,8 @@ import de.joekoe.sqs.SqsConnector
 import kotlinx.coroutines.flow.map
 
 internal suspend fun <T : Any> SqsClient.sendMessages(
+    queueUrl: Queue.Url,
     json: ObjectMapper,
-    queue: Queue,
     messages: Collection<OutboundMessage<T>>,
 ): List<SqsConnector.FailedBatchEntry<OutboundMessage<T>>> =
     messages
@@ -29,7 +29,7 @@ internal suspend fun <T : Any> SqsClient.sendMessages(
             val (inChunk, batch) = chunk.unzip()
 
             val response = sendMessageBatch {
-                queueUrl = queue.url.value
+                this.queueUrl = queueUrl.value
                 entries = batch
             }
             response.failed.map {

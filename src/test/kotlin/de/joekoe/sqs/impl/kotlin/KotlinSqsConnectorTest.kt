@@ -39,14 +39,14 @@ class KotlinSqsConnectorTest : FreeSpec({
                     .map { it.value }
                     .toList()
 
-            subject.sendMessages(queue, expected.map(::OutboundMessage))
+            subject.sendMessages(queue.url, expected.map(::OutboundMessage))
 
             val actual =
                 flow { while (true) emit(subject.receiveMessages(queue)) }
                     .buffer()
                     .takeWhile { it.isNotEmpty() }
                     .onEach { batch ->
-                        subject.deleteMessages(queue, batch.map { it.receiptHandle })
+                        subject.deleteMessages(queue.url, batch.map { it.receiptHandle })
                     }
                     .buffer()
                     .flatMapConcat { it.asFlow() }
