@@ -25,7 +25,7 @@ import org.testcontainers.containers.localstack.LocalStackContainer
 import org.testcontainers.utility.DockerImageName
 
 internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListener {
-    private val WORDS_CHARS_ONLY = """\W""".toRegex()
+    private val NON_WORD_CHARS = """\W""".toRegex()
     private val container =
         LocalStackContainer(DockerImageName.parse("localstack/localstack:3.8.1"))
             .withServices(LocalStackContainer.Service.SQS)
@@ -76,7 +76,7 @@ internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListe
         testCase.descriptor
             .ids()
             .joinToString(separator = "_") { id -> id.value.substringAfterLast(".") }
-            .replace(WORDS_CHARS_ONLY, "_")
+            .replace(NON_WORD_CHARS, "_")
             .takeLast(64)
             .let(Queue::Name)
 

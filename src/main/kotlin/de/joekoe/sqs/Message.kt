@@ -1,5 +1,7 @@
 package de.joekoe.sqs
 
+import de.joekoe.sqs.flow.MessageBound
+
 sealed interface Message<out T : Any> {
     @JvmInline value class Id(val value: String)
 
@@ -27,7 +29,7 @@ internal data class MessageImpl<T : Any>(
     override val attributes: Map<String, String>,
     override val content: T,
     override val queue: Queue,
-) : Message<T>
+) : Message<T>, MessageBound
 
 internal data class FifoMessageImpl<T : Any>(
     override val id: Message.Id,
@@ -37,7 +39,7 @@ internal data class FifoMessageImpl<T : Any>(
     override val queue: Queue.Fifo,
     override val groupId: Message.Fifo.GroupId,
     override val deduplicationId: Message.Fifo.DeduplicationId,
-) : Message<T>, Message.Fifo<T>
+) : Message<T>, Message.Fifo<T>, MessageBound
 
 internal inline fun <T : Any, R : Any> Message<T>.map(f: (T) -> R) =
     when (this) {

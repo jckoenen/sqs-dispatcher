@@ -45,6 +45,7 @@ arrow-core = { module = "io.arrow-kt:arrow-core" }
 kotest-bom = { module = "io.kotest:kotest-bom", version.ref = "kotest" }
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5" }
 kotest-core = { module = "io.kotest:kotest-assertions-core" }
+kotest-property = { module = "io.kotest:kotest-property" }
 kotest-extensions-testcontainers = { module = "io.kotest.extensions:kotest-extensions-testcontainers", version.ref = "kotest-testcontainers" }
 kotest-extensions-arrow = { module = "io.kotest.extensions:kotest-assertions-arrow", version.ref = "kotest-arrow" }
 kotest-extensions-xml = { module = "io.kotest:kotest-extensions-junitxml" }

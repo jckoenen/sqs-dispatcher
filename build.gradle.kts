@@ -15,7 +15,10 @@ version = "1.0-SNAPSHOT"
 
 repositories { mavenCentral() }
 
-kotlin { jvmToolchain(21) }
+kotlin {
+    jvmToolchain(21)
+    compilerOptions { optIn.add("kotlinx.coroutines.ExperimentalCoroutinesApi") }
+}
 
 dependencies {
     api(platform(libs.aws.kotlin.bom))
@@ -43,6 +46,7 @@ dependencies {
     testImplementation(platform(libs.kotest.bom))
     testImplementation(libs.kotest.runner.junit5)
     testImplementation(libs.kotest.core)
+    testImplementation(libs.kotest.property)
     testImplementation(libs.kotest.extensions.testcontainers)
     testImplementation(libs.kotest.extensions.arrow)
     testImplementation(libs.kotest.extensions.xml)
@@ -59,7 +63,10 @@ tasks {
             events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
         }
         reports.junitXml.required = false
-        systemProperty("gradle.build.dir", project.layout.buildDirectory.map { it.asFile.absolutePath }.get())
+        systemProperty(
+            "gradle.build.dir",
+            project.layout.buildDirectory.map { it.asFile.absolutePath }.get(),
+        )
     }
 
     dependencyUpdates {
