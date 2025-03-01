@@ -1,6 +1,7 @@
 package de.joekoe.sqs.flow
 
 import de.joekoe.sqs.Message
+import de.joekoe.sqs.MessageBound
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
 import de.joekoe.sqs.impl.isMessageAlreadyDeleted
@@ -11,32 +12,30 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
 
-fun <U : MessageBound, D : MessageBound> Flow<List<U>>.withAutomaticVisibilityExtension(
+class VisibilityExtensionStage<A : MessageBound>(
     connector: SqsConnector,
     extensionDuration: Duration,
-    handler: MessageHandler<U, D>,
-): Flow<D> = channelFlow {
-    val manager = VisibilityManager(connector, extensionDuration, 3.seconds, this)
+    scope: CoroutineScope,
+) : FlowStage<A, A> {
+    private val manager = VisibilityManager(connector, extensionDuration, scope)
 
-    this@withAutomaticVisibilityExtension // formatting comment
-        .onEach(manager::startTracking)
-        .let(handler::handle)
-        .onEach(manager::stopTracking)
-        .collect(::send)
+    override fun inbound(upstream: Flow<List<A>>): Flow<List<A>> = upstream.onEach(manager::startTracking)
+
+    override fun <C : MessageBound> outbound(upstream: Flow<List<C>>): Flow<List<C>> =
+        upstream.onEach { batch -> batch.forEach { manager.stopTracking(it) } }
 }
 
-internal class VisibilityManager(
+private class VisibilityManager(
     private val connector: SqsConnector,
     private val extensionDuration: Duration,
-    private val extensionThreshold: Duration,
     scope: CoroutineScope,
+    private val extensionThreshold: Duration = 3.seconds,
 ) : CoroutineScope by scope {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val activeBatches = BatchMap<Message.ReceiptHandle>()

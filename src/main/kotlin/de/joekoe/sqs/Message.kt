@@ -1,7 +1,5 @@
 package de.joekoe.sqs
 
-import de.joekoe.sqs.flow.MessageBound
-
 sealed interface Message<out T : Any> : MessageBound {
     @JvmInline value class Id(val value: String)
 

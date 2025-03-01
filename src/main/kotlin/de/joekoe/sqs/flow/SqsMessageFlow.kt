@@ -1,11 +1,15 @@
 package de.joekoe.sqs.flow
 
-import de.joekoe.sqs.Message
+import de.joekoe.sqs.MessageConsumer
+import de.joekoe.sqs.MessageConsumer.Action.DeleteMessage
+import de.joekoe.sqs.MessageConsumer.Action.MoveMessageToDlq
 import de.joekoe.sqs.MessageFlow
 import de.joekoe.sqs.OutboundMessage
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
+import de.joekoe.sqs.utils.TypedMap.Companion.byType
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
@@ -13,42 +17,45 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
     override fun subscribe(
         scope: CoroutineScope,
         queueName: Queue.Name,
-        handler: MessageHandler<Message<String>, MessageAction>,
+        consumer: MessageConsumer<*>,
     ): DrainControl =
         flow {
                 val queue = connector.getQueue(queueName) ?: TODO("error-handling")
 
-                receiveFlow(queue, handler).collect(::emit)
+                receiveFlow(queue, consumer, scope).collect(::emit)
             }
             .launchDraining(scope)
 
-    private fun receiveFlow(queue: Queue, handler: MessageHandler<Message<String>, MessageAction>) =
+    private fun receiveFlow(
+        queue: Queue,
+        consumer: MessageConsumer<*>,
+        scope: CoroutineScope,
+    ): Flow<Unit> =
         drainSource()
             .map { connector.receiveMessages(queue) }
-            .withAutomaticVisibilityExtension(connector, queue.visibilityTimeout, handler)
-            .map { action ->
-                // TODO: way better error handling needed
-                val failed =
-                    when (action) {
-                        is MessageAction.RetryMessage -> {
-                            emptyList()
-                        }
-                        is MessageAction.DeleteMessage -> {
-                            connector.deleteMessages(queue.url, listOf(action.receiptHandle))
-                        }
-                        is MessageAction.MoveMessageToDlq -> {
-                            connector.sendMessages(
-                                queue.dlqUrl ?: TODO("error-handling"),
-                                listOf(OutboundMessage.fromMessage(action.message)),
-                            )
-                            connector.deleteMessages(queue.url, listOf(action.receiptHandle))
-                        }
+            .through(consumer.asStage().compose(VisibilityExtensionStage(connector, queue.visibilityTimeout, scope)))
+            .map { actions ->
+                val byType = actions.byType()
+
+                byType
+                    .get<DeleteMessage>()
+                    .map(DeleteMessage::receiptHandle)
+                    .let { connector.deleteMessages(queue.url, it) }
+                    .plus(
+                        byType
+                            .get<MoveMessageToDlq>()
+                            .map(MoveMessageToDlq::message)
+                            .map(OutboundMessage.Companion::fromMessage)
+                            .let { connector.sendMessages(queue.dlqUrl ?: TODO("error-handling"), it) })
+                    .forEach {
+                        MessageFlow.logger
+                            .atInfo()
+                            .addKeyValue("message.ref", it.reference)
+                            .addKeyValue("message.action", DeleteMessage::class.simpleName)
+                            .addKeyValue("failure.code", it.code)
+                            .addKeyValue("failure.senderFault", it.senderFault)
+                            .addKeyValue("failure.message", it.errorMessage)
+                            .log("Message handled")
                     }
-                MessageFlow.logger
-                    .atInfo()
-                    .addKeyValue("message.ref", action.receiptHandle)
-                    .addKeyValue("message.action", action::class.simpleName)
-                    .addKeyValue("failures", failed)
-                    .log("Message handled")
             }
 }
