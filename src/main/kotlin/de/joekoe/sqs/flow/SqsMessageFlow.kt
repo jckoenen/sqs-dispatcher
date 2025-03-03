@@ -49,13 +49,13 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
                             .let { connector.sendMessages(queue.dlqUrl ?: TODO("error-handling"), it) })
                     .forEach {
                         MessageFlow.logger
-                            .atInfo()
+                            .atWarn()
                             .addKeyValue("message.ref", it.reference)
                             .addKeyValue("message.action", DeleteMessage::class.simpleName)
                             .addKeyValue("failure.code", it.code)
                             .addKeyValue("failure.senderFault", it.senderFault)
                             .addKeyValue("failure.message", it.errorMessage)
-                            .log("Message handled")
+                            .log("Message failed to be handled")
                     }
             }
 }

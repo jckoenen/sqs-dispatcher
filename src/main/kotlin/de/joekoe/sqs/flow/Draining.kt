@@ -15,6 +15,22 @@ sealed interface DrainControl {
     fun drain()
 }
 
+suspend fun DrainControl.drainAndJoin() {
+    drain()
+    job.join()
+}
+
+fun drainSource(): Flow<Unit> = flow {
+    val control = currentCoroutineContext()[DrainControlElement]
+    while (control?.active != false) emit(Unit)
+}
+
+fun Flow<Any?>.launchDraining(scope: CoroutineScope): DrainControl {
+    val element = DrainControlElement(false)
+    val job = scope.launch(element) { collect() }
+    return DrainControlImpl(job, element)
+}
+
 private data class DrainControlElement(var active: Boolean) : CoroutineContext.Element {
     override val key: CoroutineContext.Key<*>
         get() = DrainControlElement
@@ -29,15 +45,4 @@ private data class DrainControlImpl(
     override fun drain() {
         element.active = false
     }
-}
-
-fun drainSource(): Flow<Unit> = flow {
-    val control = currentCoroutineContext()[DrainControlElement]
-    while (control?.active != false) emit(Unit)
-}
-
-fun Flow<Any?>.launchDraining(scope: CoroutineScope): DrainControl {
-    val element = DrainControlElement(false)
-    val job = scope.launch(element) { collect() }
-    return DrainControlImpl(job, element)
 }

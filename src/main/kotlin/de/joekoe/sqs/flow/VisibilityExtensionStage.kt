@@ -42,7 +42,7 @@ private class VisibilityManager(
 
     suspend fun startTracking(messages: List<MessageBound>) {
         messages.groupBy(MessageBound::queue).forEach { (queue, byQueue) ->
-            val ref = activeBatches.putBatch(byQueue.map(MessageBound::receiptHandle))
+            val ref = activeBatches.register(byQueue.map(MessageBound::receiptHandle))
             val interval = queue.visibilityTimeout - extensionThreshold
             schedule(interval, queue, ref)
 
@@ -61,62 +61,74 @@ private class VisibilityManager(
         activeBatches.remove(message.receiptHandle)
     }
 
-    private fun schedule(delay: Duration, queue: Queue, reference: Any): Job = launch {
-        delay(delay)
-        val messages = activeBatches.getBatch(reference)
-        val log =
-            logger
-                .atDebug()
-                .addKeyValue("visibilityBatch.id", messages.identityCode())
-                .addKeyValue("visibilityBatch.size", messages.size)
+    private fun schedule(delay: Duration, queue: Queue, reference: BatchMap.BatchRef<Message.ReceiptHandle>): Job =
+        launch {
+            delay(delay)
+            val messages = reference.items()
+            val log =
+                logger
+                    .atDebug()
+                    .addKeyValue("visibilityBatch.id", messages.identityCode())
+                    .addKeyValue("visibilityBatch.size", messages.size)
 
-        if (messages.isEmpty()) {
-            log.log("No messages left to extend visibility")
-            return@launch
-        }
-        log.log("Extending visibility")
-
-        connector
-            .extendMessageVisibility(queue.url, messages, extensionDuration)
-            .onEach {
-                if (it.isMessageAlreadyDeleted()) {
-                    logger
-                        .atDebug()
-                        .addKeyValue("message.ref", it.reference)
-                        .log("Message was already deleted, ignoring")
-                } else {
-                    logger
-                        .atWarn()
-                        .addKeyValue("message.ref", it.reference)
-                        .addKeyValue("failure.code", it.code)
-                        .addKeyValue("failure.message", it.errorMessage)
-                        .addKeyValue("failure.senderFault", it.senderFault)
-                        .log("Couldn't extend visibility for message. Will NOT retry")
-                }
+            if (messages.isEmpty()) {
+                log.log("No messages left to extend visibility")
+                return@launch
             }
-            .forEach { activeBatches.remove(it.reference) }
+            log.log("Extending visibility")
 
-        schedule(extensionDuration - extensionThreshold, queue, reference)
-    }
+            connector
+                .extendMessageVisibility(queue.url, messages, extensionDuration)
+                .onEach {
+                    if (it.isMessageAlreadyDeleted()) {
+                        logger
+                            .atDebug()
+                            .addKeyValue("message.ref", it.reference)
+                            .log("Message was already deleted, ignoring")
+                    } else {
+                        logger
+                            .atWarn()
+                            .addKeyValue("message.ref", it.reference)
+                            .addKeyValue("failure.code", it.code)
+                            .addKeyValue("failure.message", it.errorMessage)
+                            .addKeyValue("failure.senderFault", it.senderFault)
+                            .log("Couldn't extend visibility for message. Will NOT retry")
+                    }
+                }
+                .forEach { activeBatches.remove(it.reference) }
+
+            schedule(extensionDuration - extensionThreshold, queue, reference)
+        }
 
     private data class BatchMap<T>(private val batches: MutableMap<T, MutableSet<T>> = mutableMapOf()) {
+        /**
+         * Prevents concurrent modification of [batches]
+         *
+         * There are three concurrent actors operating on it:
+         * 1. Upstream emitting a new batch, registering items using [register]
+         * 2. Downstream emitting an item, causing un-registration using [remove]
+         * 3. The manager itself after an item failed to be extended, also using [remove]
+         */
         private val mutex = Mutex()
 
-        // return value is the actual reference to the batch, this is just a hack to enforce the
-        // mutex usage
-        suspend fun putBatch(batch: Collection<T>): Any =
+        /**
+         * Enforces batch registration to go through the mutex and associates it with that same mutex
+         *
+         * The items reference in the ref is itself mutable, meaning a call to [remove] will remove it from our global
+         * [batches] map, but also from the individual ref it was contained in
+         */
+        suspend fun register(batch: Collection<T>): BatchRef<T> =
             mutex.withLock {
                 val inner = batch.toMutableSet()
                 inner.forEach { k -> batches[k] = inner }
-                inner
+                BatchRef(inner, mutex)
             }
 
-        @Suppress("UNCHECKED_CAST") // guarded by put
-        suspend fun getBatch(reference: Any): Collection<T> {
-            if (reference !is Set<*>) return emptySet()
-            return mutex.withLock { reference.toSet() } as Set<T>
-        }
-
+        /** Removes the element from the global reference AND from whatever [BatchRef] it was associated to. */
         suspend fun remove(element: T) = mutex.withLock { batches.remove(element)?.remove(element) }
+
+        data class BatchRef<T>(private val items: MutableSet<T>, private val mutex: Mutex) {
+            suspend fun items() = mutex.withLock(action = items::toSet)
+        }
     }
 }
