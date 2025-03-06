@@ -1,21 +1,21 @@
 package de.joekoe.sqs
 
-data class OutboundMessage<T : Any>(
-    val content: T,
+data class OutboundMessage(
+    val content: String,
     val attributes: Map<String, String> = emptyMap(),
-    val fifo: Fifo<T>? = null,
+    val fifo: Fifo? = null,
 ) {
-    data class Fifo<T : Any>(
+    data class Fifo(
         override val groupId: Message.Fifo.GroupId,
         override val deduplicationId: Message.Fifo.DeduplicationId,
-    ) : Message.Fifo<T>
+    ) : Message.Fifo
 
     internal companion object {
-        fun <T : Any> fromMessage(message: Message<T>) =
+        fun fromMessage(message: Message<String>) =
             OutboundMessage(
                 content = message.content,
                 attributes = message.attributes,
-                fifo = (message as? Message.Fifo<*>)?.let { Fifo(it.groupId, it.deduplicationId) },
+                fifo = (message as? Message.Fifo)?.let { Fifo(it.groupId, it.deduplicationId) },
             )
     }
 }

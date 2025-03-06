@@ -1,21 +1,14 @@
 package de.joekoe.sqs.impl.kotlin
 
 import de.joekoe.sqs.OutboundMessage
-import de.joekoe.sqs.SqsFailure
 import de.joekoe.sqs.SqsFailure.ChangeMessagesFailure.MessageAlreadyDeleted
 import de.joekoe.sqs.testinfra.SqsContainerExtension
 import de.joekoe.sqs.testinfra.SqsContainerExtension.queueName
 import de.joekoe.sqs.testinfra.assumeRight
-import io.kotest.assertions.arrow.core.shouldBeLeft
-import io.kotest.assertions.failureWithTypeInformation
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.inspectors.forAll
-import io.kotest.matchers.collections.beEmpty
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.should
-import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
@@ -30,7 +23,7 @@ class ExtendMessageVisibilityTest : FreeSpec({
 
         "should fail with expected error" {
             val queue = connector.getOrCreateQueue(queueName()).assumeRight()
-            val outbound = OutboundMessage(mapOf("foo" to "bar"))
+            val outbound = OutboundMessage("hello, world")
 
             connector.sendMessages(queue.url, listOf(outbound)).assumeRight()
             val received = flow { while (true) emit(connector.receiveMessages(queue)) }

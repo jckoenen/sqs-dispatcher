@@ -1,6 +1,6 @@
 package de.joekoe.sqs
 
-sealed interface MessageConsumer<T : Any> {
+sealed interface MessageConsumer {
     interface Configuration {
         val parallelism: Int
     }
@@ -16,18 +16,16 @@ sealed interface MessageConsumer<T : Any> {
             override val receiptHandle: Message.ReceiptHandle,
         ) : Action
 
-        data class MoveMessageToDlq(val message: Message<*>) : Action, MessageBound by message
+        data class MoveMessageToDlq(val message: Message<String>) : Action, MessageBound by message
     }
 
     val configuration: Configuration
 
-    fun parse(content: String): T // TODO: errors
-
-    interface Individual<T : Any> : MessageConsumer<T> {
-        suspend fun handle(message: Message<T>): Action
+    interface Individual : MessageConsumer {
+        suspend fun handle(message: Message<String>): Action
     }
 
-    interface Batch<T : Any> : MessageConsumer<T> {
-        suspend fun handle(messages: List<Message<T>>): List<Action>
+    interface Batch : MessageConsumer {
+        suspend fun handle(messages: List<Message<String>>): List<Action>
     }
 }

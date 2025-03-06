@@ -9,7 +9,7 @@ sealed interface Message<out T : Any> : MessageBound {
     val attributes: Map<String, String>
     val content: T
 
-    sealed interface Fifo<T : Any> {
+    sealed interface Fifo {
         @JvmInline value class GroupId(val value: String)
 
         @JvmInline value class DeduplicationId(val value: String)
@@ -35,7 +35,7 @@ internal data class FifoMessageImpl<T : Any>(
     override val queue: Queue.Fifo,
     override val groupId: Message.Fifo.GroupId,
     override val deduplicationId: Message.Fifo.DeduplicationId,
-) : Message<T>, Message.Fifo<T>
+) : Message<T>, Message.Fifo
 
 internal inline fun <T : Any, R : Any> Message<T>.map(f: (T) -> R) =
     when (this) {

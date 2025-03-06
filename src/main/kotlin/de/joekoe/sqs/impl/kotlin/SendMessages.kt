@@ -7,7 +7,6 @@ import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.model.MessageAttributeValue
 import aws.sdk.kotlin.services.sqs.model.SendMessageBatchRequestEntry
 import aws.sdk.kotlin.services.sqs.sendMessageBatch
-import com.fasterxml.jackson.databind.ObjectMapper
 import de.joekoe.sqs.BatchResult
 import de.joekoe.sqs.OutboundMessage
 import de.joekoe.sqs.Queue
@@ -16,17 +15,16 @@ import kotlinx.coroutines.flow.map
 
 private const val SEND_OPERATION = "SQS.SendMessages"
 
-internal suspend fun <T : Any> SqsClient.sendMessages(
+internal suspend fun SqsClient.sendMessages(
     queueUrl: Queue.Url,
-    json: ObjectMapper,
-    messages: Collection<OutboundMessage<T>>, // TODO: get rid of T here, this should be string only
-): BatchResult<SendMessagesFailure, OutboundMessage<T>> =
+    messages: Collection<OutboundMessage>,
+): BatchResult<SendMessagesFailure, OutboundMessage> =
     messages
         .chunkForBatching { i, msg ->
             SendMessageBatchRequestEntry {
                 id = i.toString()
                 messageAttributes = msg.attributes.mapValues { (_, v) -> MessageAttributeValue { stringValue = v } }
-                messageBody = json.writeValueAsString(msg.content)
+                messageBody = msg.content
                 messageDeduplicationId = msg.fifo?.deduplicationId?.value
                 messageGroupId = msg.fifo?.groupId?.value
             }
@@ -38,11 +36,11 @@ internal suspend fun <T : Any> SqsClient.sendMessages(
         }
         .combine()
 
-private suspend fun <T : Any> SqsClient.doSend(
+private suspend fun SqsClient.doSend(
     queueUrl: Queue.Url,
     batch: Nel<SendMessageBatchRequestEntry>,
-    inChunk: Nel<OutboundMessage<T>>,
-): BatchResult<SendMessagesFailure, OutboundMessage<T>> =
+    inChunk: Nel<OutboundMessage>,
+): BatchResult<SendMessagesFailure, OutboundMessage> =
     execute<SendMessagesFailure, _>(convertCommonExceptions(queueUrl.leftIor(), SEND_OPERATION)) {
             sendMessageBatch {
                 this.queueUrl = queueUrl.value

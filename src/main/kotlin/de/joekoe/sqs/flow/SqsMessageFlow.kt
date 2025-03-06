@@ -24,14 +24,14 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
     override fun subscribe(
         scope: CoroutineScope,
         queueName: Queue.Name,
-        consumer: MessageConsumer<*>,
+        consumer: MessageConsumer,
     ): DrainControl =
         flow { connector.getQueue(queueName).map { receiveFlow(it, consumer, scope).collect(::emit) } }
             .launchDraining(scope)
 
     private fun receiveFlow(
         queue: Queue,
-        consumer: MessageConsumer<*>,
+        consumer: MessageConsumer,
         scope: CoroutineScope,
     ): Flow<Unit> =
         drainSource()

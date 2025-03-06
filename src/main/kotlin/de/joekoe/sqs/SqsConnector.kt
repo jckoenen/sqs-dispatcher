@@ -51,10 +51,10 @@ interface SqsConnector {
         timeout: Duration = 10.seconds,
     ): Either<ReceiveMessagesFailure, List<Message<String>>>
 
-    suspend fun <T : Any> sendMessages(
+    suspend fun sendMessages(
         queueUrl: Queue.Url,
-        messages: Collection<OutboundMessage<T>>,
-    ): BatchResult<SendMessagesFailure, OutboundMessage<T>>
+        messages: Collection<OutboundMessage>,
+    ): BatchResult<SendMessagesFailure, OutboundMessage>
 
     suspend fun deleteMessages(
         queueUrl: Queue.Url,

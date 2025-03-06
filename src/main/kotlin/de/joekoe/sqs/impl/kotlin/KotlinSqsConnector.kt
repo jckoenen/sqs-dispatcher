@@ -31,11 +31,10 @@ internal class KotlinSqsConnector(
         timeout: Duration,
     ): Either<SqsFailure.ReceiveMessagesFailure, List<Message<String>>> = sqsClient.receiveMessages(queue, timeout)
 
-    override suspend fun <T : Any> sendMessages(
+    override suspend fun sendMessages(
         queueUrl: Queue.Url,
-        messages: Collection<OutboundMessage<T>>,
-    ): BatchResult<SqsFailure.SendMessagesFailure, OutboundMessage<T>> =
-        sqsClient.sendMessages(queueUrl, json, messages)
+        messages: Collection<OutboundMessage>,
+    ): BatchResult<SqsFailure.SendMessagesFailure, OutboundMessage> = sqsClient.sendMessages(queueUrl, messages)
 
     override suspend fun deleteMessages(
         queueUrl: Queue.Url,

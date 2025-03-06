@@ -8,7 +8,7 @@ interface MessageFlow {
     fun subscribe(
         scope: CoroutineScope,
         queueName: Queue.Name,
-        consumer: MessageConsumer<*>,
+        consumer: MessageConsumer,
     ): DrainControl
 
     companion object {

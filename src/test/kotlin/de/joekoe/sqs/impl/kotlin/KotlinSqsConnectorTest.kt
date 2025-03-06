@@ -28,11 +28,10 @@ class KotlinSqsConnectorTest : FreeSpec({
         val subject = SqsContainerExtension.newConnector()
         val count = 255
         val queue = subject.getOrCreateQueue(queueName()).assumeRight()
-        val json = jacksonObjectMapper()
 
         "should produce and consume messages correctly" {
             val expected =
-                Arb.bind(Arb.string(), Arb.int(), ::TestData)
+                Arb.string()
                     .generate(RandomSource.default())
                     .take(count)
                     .map { it.value }
@@ -53,7 +52,6 @@ class KotlinSqsConnectorTest : FreeSpec({
                     .buffer()
                     .flatMapConcat { it.asFlow() }
                     .map { it.content }
-                    .map { json.readValue<TestData>(it) }
                     .take(count) // skip the last long poll when the test found all items
                     .toList()
 
@@ -61,5 +59,3 @@ class KotlinSqsConnectorTest : FreeSpec({
         }
     }
 })
-
-data class TestData(val a: String, val b: Int)
