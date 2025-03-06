@@ -21,6 +21,9 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 
 [libraries]
+kotlin-stdlib = {module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin"}
+kotlin-reflect = {module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin"}
+
 aws-kotlin-bom = { module = "aws.sdk.kotlin:bom", version.ref = "aws-kotlin" }
 aws-kotlin-sqs = { module = "aws.sdk.kotlin:sqs" }
 

@@ -21,11 +21,13 @@ kotlin {
 }
 
 dependencies {
+    api(libs.kotlin.stdlib)
+
     api(platform(libs.aws.kotlin.bom))
     api(libs.aws.kotlin.sqs)
 
     implementation(platform(libs.kotlinx.coroutines.bom))
-    implementation(libs.kotlinx.coroutines.core)
+    api(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.slf4j)
 
     implementation(libs.kotlinx.datetime)
@@ -35,10 +37,11 @@ dependencies {
     implementation(libs.jackson.kotlin)
 
     implementation(platform(libs.arrow.bom))
-    implementation(libs.arrow.core)
+    api(libs.arrow.core)
 
     compileOnly(libs.slf4j.api)
 
+    testImplementation(libs.kotlin.reflect)
     testImplementation(libs.logback.classic)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.coroutines.debug)

@@ -1,17 +1,23 @@
 package de.joekoe.sqs.impl.kotlin
 
+import arrow.core.Nel
+import arrow.core.leftIor
+import arrow.core.unzip
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.deleteMessageBatch
 import aws.sdk.kotlin.services.sqs.model.DeleteMessageBatchRequestEntry
+import de.joekoe.sqs.BatchResult
 import de.joekoe.sqs.Message
 import de.joekoe.sqs.Queue
-import de.joekoe.sqs.SqsConnector
+import de.joekoe.sqs.SqsFailure.DeleteMessagesFailure
 import kotlinx.coroutines.flow.map
+
+private const val DELETE_OPERATION = "SQS.DeleteMessages"
 
 internal suspend fun SqsClient.deleteMessages(
     queueUrl: Queue.Url,
     handles: Collection<Message.ReceiptHandle>,
-): List<SqsConnector.FailedBatchEntry<Message.ReceiptHandle>> =
+): BatchResult<DeleteMessagesFailure, Message.ReceiptHandle> =
     handles
         .chunkForBatching { i, handle ->
             DeleteMessageBatchRequestEntry {
@@ -21,17 +27,23 @@ internal suspend fun SqsClient.deleteMessages(
         }
         .map { chunk ->
             val (inChunk, requestEntries) = chunk.unzip()
-            val response = deleteMessageBatch {
+            doDelete(queueUrl, requestEntries, inChunk)
+        }
+        .combine()
+
+private suspend fun SqsClient.doDelete(
+    queueUrl: Queue.Url,
+    batch: Nel<DeleteMessageBatchRequestEntry>,
+    inChunk: Nel<Message.ReceiptHandle>,
+): BatchResult<DeleteMessagesFailure, Message.ReceiptHandle> =
+    execute<DeleteMessagesFailure, _>(convertCommonExceptions(queueUrl.leftIor(), DELETE_OPERATION)) {
+            deleteMessageBatch {
                 this.queueUrl = queueUrl.value
-                entries = requestEntries
-            }
-            response.failed.map {
-                SqsConnector.FailedBatchEntry(
-                    reference = inChunk[it.id.toInt()],
-                    code = it.code,
-                    errorMessage = it.message,
-                    senderFault = it.senderFault,
-                )
+                entries = batch
             }
         }
-        .flattenToList()
+        .mapLeft { batchCallFailed(it, inChunk) }
+        .fold(
+            ifLeft = { it.leftIor() },
+            ifRight = { splitFailureAndSuccess(DELETE_OPERATION, queueUrl.leftIor(), inChunk, it.failed) },
+        )

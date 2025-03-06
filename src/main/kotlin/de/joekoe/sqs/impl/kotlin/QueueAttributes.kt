@@ -1,5 +1,7 @@
 package de.joekoe.sqs.impl.kotlin
 
+import arrow.core.Either
+import arrow.core.raise.either
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.getQueueAttributes
 import aws.sdk.kotlin.services.sqs.model.QueueAttributeName
@@ -7,24 +9,32 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
+import de.joekoe.sqs.SqsFailure
 import de.joekoe.sqs.impl.RedrivePolicy
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-internal typealias VisibilityTimeout = Duration
+internal data class QueueAttributes(val visibilityTimeout: Duration, val dlqUrl: Queue.Url?)
 
 internal suspend fun SqsClient.getQueueAttributes(
     json: ObjectMapper,
     url: Queue.Url,
     options: SqsConnector.Options,
-): Pair<VisibilityTimeout, Queue.Url?> {
+): Either<SqsFailure.UnknownFailure, QueueAttributes> = either {
     val attributes =
-        getQueueAttributes {
-                queueUrl = url.value
-                attributeNames = listOf(QueueAttributeName.VisibilityTimeout, QueueAttributeName.RedrivePolicy)
+        execute(unknownFailure("SQS.GetQueueAttributes", url)) {
+                getQueueAttributes {
+                        queueUrl = url.value
+                        attributeNames =
+                            listOf(
+                                QueueAttributeName.VisibilityTimeout,
+                                QueueAttributeName.RedrivePolicy,
+                            )
+                    }
+                    .attributes
+                    .orEmpty()
             }
-            .attributes
-            .orEmpty()
+            .bind()
 
     val visibilityTimeout =
         attributes[QueueAttributeName.VisibilityTimeout]?.toIntOrNull()?.seconds ?: options.defaultVisibilityTimeout
@@ -36,13 +46,13 @@ internal suspend fun SqsClient.getQueueAttributes(
             ?.let { arn -> "${config.endpointUrl}/${arn.accountId}/${arn.name.value}" }
             ?.let(Queue::Url)
 
-    return visibilityTimeout to dlqUrl
+    QueueAttributes(visibilityTimeout, dlqUrl)
 }
 
 internal fun buildAttributes(
     json: ObjectMapper,
     isFifo: Boolean? = null,
-    visibilityTimeout: VisibilityTimeout? = null,
+    visibilityTimeout: Duration? = null,
     redrivePolicy: RedrivePolicy? = null,
 ) = buildMap {
     infix fun QueueAttributeName.from(value: String?) {

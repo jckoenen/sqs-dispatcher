@@ -1,5 +1,6 @@
 package de.joekoe.sqs.impl.kotlin
 
+import arrow.core.raise.either
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.model.Message as SqsMessage
 import aws.sdk.kotlin.services.sqs.model.MessageSystemAttributeName
@@ -8,20 +9,25 @@ import de.joekoe.sqs.FifoMessageImpl
 import de.joekoe.sqs.Message
 import de.joekoe.sqs.MessageImpl
 import de.joekoe.sqs.Queue
+import de.joekoe.sqs.SqsFailure.ReceiveMessagesFailure
+import de.joekoe.sqs.utils.id
 import kotlin.time.Duration
 
-internal suspend fun SqsClient.receiveMessages(
-    queue: Queue,
-    timeout: Duration,
-): List<Message<String>> {
-    val response = receiveMessage {
-        maxNumberOfMessages = SQS_BATCH_SIZE
-        waitTimeSeconds = timeout.inWholeSeconds.toInt()
-        queueUrl = queue.url.value
-        messageAttributeNames = listOf("*")
-    }
+internal const val RECEIVE_OPERATION = "SQS.ReceiveMessages"
 
-    return response.messages.orEmpty().map { message ->
+internal suspend fun SqsClient.receiveMessages(queue: Queue, timeout: Duration) = either {
+    val response =
+        execute<ReceiveMessagesFailure, _>(convertCommonExceptions(queue.id(), RECEIVE_OPERATION)) {
+                receiveMessage {
+                    maxNumberOfMessages = SQS_BATCH_SIZE
+                    waitTimeSeconds = timeout.inWholeSeconds.toInt()
+                    queueUrl = queue.url.value
+                    messageAttributeNames = listOf("*")
+                }
+            }
+            .bind()
+
+    response.messages.orEmpty().map { message ->
         if (queue is Queue.Fifo) {
             toFifoMessage(message, queue)
         } else {

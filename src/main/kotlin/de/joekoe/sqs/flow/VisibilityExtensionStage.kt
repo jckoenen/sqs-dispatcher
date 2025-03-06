@@ -4,8 +4,10 @@ import de.joekoe.sqs.Message
 import de.joekoe.sqs.MessageBound
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
-import de.joekoe.sqs.impl.isMessageAlreadyDeleted
+import de.joekoe.sqs.SqsFailure.ChangeMessagesFailure.MessageAlreadyDeleted
+import de.joekoe.sqs.allTags
 import de.joekoe.sqs.utils.identityCode
+import de.joekoe.sqs.utils.putAll
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
@@ -79,23 +81,27 @@ private class VisibilityManager(
 
             connector
                 .extendMessageVisibility(queue.url, messages, extensionDuration)
-                .onEach {
-                    if (it.isMessageAlreadyDeleted()) {
+                .leftOrNull()
+                .orEmpty()
+                .flatMap { (cause, affected) -> affected.map { cause to it } }
+                .onEach { (cause, failure) ->
+                    if (cause is MessageAlreadyDeleted) {
                         logger
                             .atDebug()
-                            .addKeyValue("message.ref", it.reference)
+                            .addKeyValue("failure.ref", failure.reference)
                             .log("Message was already deleted, ignoring")
                     } else {
                         logger
                             .atWarn()
-                            .addKeyValue("message.ref", it.reference)
-                            .addKeyValue("failure.code", it.code)
-                            .addKeyValue("failure.message", it.errorMessage)
-                            .addKeyValue("failure.senderFault", it.senderFault)
+                            .putAll(cause.allTags())
+                            .addKeyValue("failure.ref", failure.reference)
+                            .addKeyValue("failure.code", failure.code)
+                            .addKeyValue("failure.message", failure.errorMessage)
+                            .addKeyValue("failure.senderFault", failure.senderFault)
                             .log("Couldn't extend visibility for message. Will NOT retry")
                     }
                 }
-                .forEach { activeBatches.remove(it.reference) }
+                .forEach { (_, failure) -> activeBatches.remove(failure.reference) }
 
             schedule(extensionDuration - extensionThreshold, queue, reference)
         }
