@@ -27,13 +27,13 @@ sealed interface SqsFailure : Failure {
         }
     }
 
-    data class QueueDoesNotExist(val operation: String, val queue: QueueId) :
-        ReceiveMessagesFailure, SendMessagesFailure, DeleteMessagesFailure, ChangeMessagesFailure, GetQueueFailure {
+    data class QueueDoesNotExist(
+        val operation: String,
+        val queue: QueueId,
+        override val message: String = "The target queue does not exist"
+    ) : ReceiveMessagesFailure, SendMessagesFailure, DeleteMessagesFailure, ChangeMessagesFailure, GetQueueFailure {
         override val customTags: Map<String, Any>
             get() = opTag(operation) + queue.asTags()
-
-        override val message: String
-            get() = "The target queue does not exist"
     }
 
     data class UnknownFailure(

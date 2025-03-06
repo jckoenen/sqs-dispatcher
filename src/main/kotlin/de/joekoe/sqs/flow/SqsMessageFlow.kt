@@ -1,6 +1,8 @@
 package de.joekoe.sqs.flow
 
+import arrow.core.Nel
 import arrow.core.getOrElse
+import arrow.core.leftIor
 import de.joekoe.sqs.BatchResult
 import de.joekoe.sqs.Failure
 import de.joekoe.sqs.MessageConsumer
@@ -10,7 +12,10 @@ import de.joekoe.sqs.MessageFlow
 import de.joekoe.sqs.OutboundMessage
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
+import de.joekoe.sqs.SqsFailure
 import de.joekoe.sqs.allTags
+import de.joekoe.sqs.impl.kotlin.SEND_OPERATION
+import de.joekoe.sqs.impl.kotlin.batchCallFailed
 import de.joekoe.sqs.utils.TypedMap.Companion.byType
 import de.joekoe.sqs.utils.asTags
 import de.joekoe.sqs.utils.id
@@ -26,7 +31,13 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
         queueName: Queue.Name,
         consumer: MessageConsumer,
     ): DrainControl =
-        flow { connector.getQueue(queueName).map { receiveFlow(it, consumer, scope).collect(::emit) } }
+        flow {
+                connector
+                    .getQueue(queueName)
+                    .map { receiveFlow(it, consumer, scope) }
+                    .onRight { it.collect(::emit) }
+                    .onLeft { TODO("Retry?") }
+            }
             .launchDraining(scope)
 
     private fun receiveFlow(
@@ -40,32 +51,38 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
             .map { actions ->
                 val byType = actions.byType()
 
-                // TODO: what to do with these
-                moveToDlq(byType.get(), queue)
-                delete(byType.get(), queue)
+                byType.onMatching { moveToDlq(it, queue) }?.also { logOutcome(it, queue) }
+                byType.onMatching { delete(it, queue) }?.also { logOutcome(it, queue) }
             }
 
-    private suspend fun moveToDlq(toSend: List<MoveMessageToDlq>, queue: Queue) =
-        toSend
-            .map(MoveMessageToDlq::message) // formatting comment :(
-            .map(OutboundMessage.Companion::fromMessage)
-            .let { connector.sendMessages(queue.dlqUrl ?: TODO("error-handling"), it) }
-            .also { logOutcome<MoveMessageToDlq>(it, queue) }
+    private suspend fun moveToDlq(
+        toSend: Nel<MoveMessageToDlq>,
+        queue: Queue,
+    ): BatchResult<SqsFailure.SendMessagesFailure, OutboundMessage> {
+        val messages = toSend.map(MoveMessageToDlq::message).map(OutboundMessage::fromMessage)
+        val dlq = queue.dlqUrl
+
+        return if (dlq == null) {
+            val failure =
+                SqsFailure.QueueDoesNotExist(
+                    operation = SEND_OPERATION,
+                    queue = queue.id(),
+                    message = "The specified queue does not have a DLQ! Messages will be retried instead",
+                )
+            batchCallFailed(failure, messages, senderFault = true).leftIor()
+        } else {
+            connector.sendMessages(dlq, messages)
+        }
+    }
 
     private suspend fun delete(toDelete: List<DeleteMessage>, queue: Queue) =
-        connector.deleteMessages(queue.url, toDelete.map(DeleteMessage::receiptHandle)).also {
-            logOutcome<DeleteMessage>(it, queue)
-        }
+        connector.deleteMessages(queue.url, toDelete.map(DeleteMessage::receiptHandle))
 
-    private inline fun <reified A : MessageConsumer.Action> logOutcome(
-        batchResult: BatchResult<Failure, *>,
-        queue: Queue,
-    ) {
+    private fun logOutcome(batchResult: BatchResult<Failure, *>, queue: Queue) {
         batchResult.getOrNull()?.let { success ->
             MessageFlow.logger
                 .atDebug()
                 .putAll(queue.id().asTags())
-                .addKeyValue("messages.action", A::class.simpleName)
                 .addKeyValue("messages.count", success.size)
                 .log("Action succeeded")
         }
@@ -74,7 +91,6 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
             MessageFlow.logger
                 .atWarn()
                 .putAll(cause.allTags())
-                .addKeyValue("messages.action", A::class.simpleName)
                 .addKeyValue("messages.count", messages.size)
                 .log("Action (partially?) failed")
         }

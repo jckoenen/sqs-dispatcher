@@ -110,7 +110,7 @@ internal fun <T : Any> splitFailureAndSuccess(
         ?: error("Source is Nel, so one side has to be present")
 }
 
-internal fun <E, T : Any> batchCallFailed(failure: E, batch: Nel<T>) =
+internal fun <E, T : Any> batchCallFailed(failure: E, batch: Nel<T>, senderFault: Boolean? = null) =
     mapOf(
         failure to
             batch.map {
@@ -118,6 +118,6 @@ internal fun <E, T : Any> batchCallFailed(failure: E, batch: Nel<T>) =
                     it,
                     "CALL_FAILED",
                     "The batch call failed completely",
-                    null,
+                    senderFault,
                 )
             })

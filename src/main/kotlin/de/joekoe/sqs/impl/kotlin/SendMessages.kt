@@ -13,7 +13,7 @@ import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsFailure.SendMessagesFailure
 import kotlinx.coroutines.flow.map
 
-private const val SEND_OPERATION = "SQS.SendMessages"
+internal const val SEND_OPERATION = "SQS.SendMessages"
 
 internal suspend fun SqsClient.sendMessages(
     queueUrl: Queue.Url,
