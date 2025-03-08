@@ -62,13 +62,20 @@ private suspend fun SqsClient.doChange(
 private fun <T : Any> extractAlreadyDeleted(
     map: FailuresWithCause<SqsFailure.PartialFailure, T>
 ): FailuresWithCause<ChangeMessagesFailure, T> {
-    val (k, failures) = map.entries.single() // TODO: generalize
-    val (alreadyDeleted, others) = failures.partition(::isAlreadyDeleted)
+    return map.entries
+        .flatMap { (cause, affected) ->
+            val (alreadyDeleted, others) = affected.partition(::isAlreadyDeleted)
 
-    return buildMap {
-        others.toNonEmptyListOrNull()?.let { put(k, it) }
-        alreadyDeleted.toNonEmptyListOrNull()?.let { put(ChangeMessagesFailure.MessageAlreadyDeleted(k.queue), it) }
-    }
+            val toBeKept = others.toNonEmptyListOrNull()?.let { cause to it }
+            val newCause =
+                alreadyDeleted.toNonEmptyListOrNull()?.let {
+                    ChangeMessagesFailure.MessageAlreadyDeleted(cause.queue) to it
+                }
+            listOf(toBeKept, newCause)
+        }
+        .filterNotNull()
+        .groupBy({ (k, _) -> k }, { (_, v) -> v })
+        .mapValues { (_, v) -> v.reduce { l, r -> l + r } }
 }
 
 private fun isAlreadyDeleted(entry: SqsConnector.FailedBatchEntry<*>) =
