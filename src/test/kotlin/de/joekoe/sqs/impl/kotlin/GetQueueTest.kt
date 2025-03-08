@@ -28,7 +28,6 @@ class GetQueueTest: FreeSpec({
                 subject.getQueue(existing.name) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldDenoteSameQueueAs existing.url
-                    visibilityTimeout shouldBe existing.visibilityTimeout
                     dlqUrl shouldDenoteSameQueueAs existing.dlqUrl
                 }
             }
@@ -38,7 +37,6 @@ class GetQueueTest: FreeSpec({
                 subject.getQueue(existing.name) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldDenoteSameQueueAs existing.url
-                    visibilityTimeout shouldBe existing.visibilityTimeout
                     dlqUrl.shouldBeNull()
                 }
             }
@@ -50,7 +48,6 @@ class GetQueueTest: FreeSpec({
                 subject.getQueue(existing.name) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldDenoteSameQueueAs existing.url
-                    visibilityTimeout shouldBe existing.visibilityTimeout
                     dlqUrl shouldDenoteSameQueueAs existing.dlqUrl
                 }
             }
@@ -60,7 +57,6 @@ class GetQueueTest: FreeSpec({
                 subject.getQueue(existing.name) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldDenoteSameQueueAs existing.url
-                    visibilityTimeout shouldBe existing.visibilityTimeout
                     dlqUrl.shouldBeNull()
                 }
             }

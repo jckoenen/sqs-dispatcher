@@ -26,8 +26,6 @@ typealias FailuresWithCause<L, R> = Map<out L, Nel<SqsConnector.FailedBatchEntry
 
 interface SqsConnector {
 
-    data class Options(val defaultVisibilityTimeout: Duration = 30.seconds)
-
     data class FailedBatchEntry<T : Any>(
         val reference: T,
         val code: String,
@@ -48,7 +46,8 @@ interface SqsConnector {
 
     suspend fun receiveMessages(
         queue: Queue,
-        timeout: Duration = 10.seconds,
+        receiveTimeout: Duration = 10.seconds,
+        visibilityTimeout: Duration = 30.seconds
     ): Either<ReceiveMessagesFailure, List<Message<String>>>
 
     suspend fun sendMessages(

@@ -1,7 +1,5 @@
 package de.joekoe.sqs.impl.kotlin
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import de.joekoe.sqs.OutboundMessage
 import de.joekoe.sqs.testinfra.SqsContainerExtension
 import de.joekoe.sqs.testinfra.SqsContainerExtension.queueName
@@ -10,8 +8,6 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.property.Arb
 import io.kotest.property.RandomSource
-import io.kotest.property.arbitrary.bind
-import io.kotest.property.arbitrary.int
 import io.kotest.property.arbitrary.string
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.buffer

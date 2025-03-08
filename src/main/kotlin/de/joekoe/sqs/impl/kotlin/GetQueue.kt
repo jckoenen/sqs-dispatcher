@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import de.joekoe.sqs.FifoQueueImpl
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.QueueImpl
-import de.joekoe.sqs.SqsConnector
 import de.joekoe.sqs.SqsFailure.GetQueueFailure
 
 private const val GET_OPERATION = "SQS.GetQueue"
@@ -17,7 +16,6 @@ private const val GET_OPERATION = "SQS.GetQueue"
 internal suspend fun SqsClient.getQueue(
     json: ObjectMapper,
     name: Queue.Name,
-    options: SqsConnector.Options,
 ): Either<GetQueueFailure, Queue> = either {
     val url =
         execute<GetQueueFailure, _>(convertCommonExceptions(name.rightIor(), GET_OPERATION)) {
@@ -25,12 +23,12 @@ internal suspend fun SqsClient.getQueue(
             }
             .bind()
 
-    val (visibilityTimeout, dlqUrl) = getQueueAttributes(json, url, options).bind()
+    val dlqUrl = getDlqUrl(json, url).bind()
 
     if (name.designatesFifo()) {
-        FifoQueueImpl(name, url, visibilityTimeout, dlqUrl)
+        FifoQueueImpl(name, url, dlqUrl)
     } else {
-        QueueImpl(name, url, visibilityTimeout, dlqUrl)
+        QueueImpl(name, url, dlqUrl)
     }
 }
 

@@ -1,7 +1,5 @@
 package de.joekoe.sqs
 
-import kotlin.time.Duration
-
 sealed interface Queue {
     @JvmInline value class Name(val value: String)
 
@@ -9,7 +7,6 @@ sealed interface Queue {
 
     val name: Name
     val url: Url
-    val visibilityTimeout: Duration
     val dlqUrl: Url?
 
     sealed interface Fifo : Queue
@@ -18,13 +15,11 @@ sealed interface Queue {
 internal data class QueueImpl(
     override val name: Queue.Name,
     override val url: Queue.Url,
-    override val visibilityTimeout: Duration,
     override val dlqUrl: Queue.Url?,
 ) : Queue
 
 internal data class FifoQueueImpl(
     override val name: Queue.Name,
     override val url: Queue.Url,
-    override val visibilityTimeout: Duration,
     override val dlqUrl: Queue.Url?,
 ) : Queue.Fifo

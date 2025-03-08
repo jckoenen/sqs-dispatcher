@@ -15,14 +15,19 @@ import kotlin.time.Duration
 
 internal const val RECEIVE_OPERATION = "SQS.ReceiveMessages"
 
-internal suspend fun SqsClient.receiveMessages(queue: Queue, timeout: Duration) = either {
+internal suspend fun SqsClient.receiveMessages(
+    queue: Queue,
+    receiveTimeout: Duration,
+    visibilityTimeout: Duration,
+) = either {
     val response =
         execute<ReceiveMessagesFailure, _>(convertCommonExceptions(queue.id(), RECEIVE_OPERATION)) {
                 receiveMessage {
                     maxNumberOfMessages = SQS_BATCH_SIZE
-                    waitTimeSeconds = timeout.inWholeSeconds.toInt()
+                    waitTimeSeconds = receiveTimeout.inWholeSeconds.toInt()
                     queueUrl = queue.url.value
                     messageAttributeNames = listOf("*")
+                    this.visibilityTimeout = visibilityTimeout.inWholeSeconds.toInt()
                 }
             }
             .bind()

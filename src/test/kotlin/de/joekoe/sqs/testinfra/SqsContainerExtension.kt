@@ -69,7 +69,7 @@ internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListe
     }
 
     suspend fun newConnector(clientOverride: SqsClient? = null): SqsConnector =
-        KotlinSqsConnector(clientOverride ?: client.await(), jacksonObjectMapper(), SqsConnector.Options())
+        KotlinSqsConnector(clientOverride ?: client.await(), jacksonObjectMapper())
 
     fun TestScope.queueName(): Queue.Name =
         testCase.descriptor

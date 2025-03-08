@@ -18,16 +18,15 @@ internal suspend fun SqsClient.getOrCreateQueue(
     json: ObjectMapper,
     name: Queue.Name,
     createDlq: Boolean,
-    options: SqsConnector.Options,
 ): Either<SqsFailure.CreateQueueFailure, Queue> = either {
-    val targetQueueUrl = doCreateQueue(json, name, options).bind()
-    val (visibilityTimeout, existingDlqUrl) = getQueueAttributes(json, targetQueueUrl, options).bind()
+    val targetQueueUrl = doCreateQueue(json, name).bind()
+    val existingDlqUrl = getDlqUrl(json, targetQueueUrl).bind()
 
     val finalDlqUrl =
         when {
             existingDlqUrl == null && !createDlq -> null
             existingDlqUrl == null -> {
-                val created = doCreateQueue(json, dlqName(name), options).bind()
+                val created = doCreateQueue(json, dlqName(name)).bind()
                 attachDlq(targetQueueUrl, json, created).bind()
                 SqsConnector.logger
                     .atInfo()
@@ -48,9 +47,9 @@ internal suspend fun SqsClient.getOrCreateQueue(
         }
 
     if (name.designatesFifo()) {
-        FifoQueueImpl(name, targetQueueUrl, visibilityTimeout, finalDlqUrl)
+        FifoQueueImpl(name, targetQueueUrl, finalDlqUrl)
     } else {
-        QueueImpl(name, targetQueueUrl, visibilityTimeout, finalDlqUrl)
+        QueueImpl(name, targetQueueUrl, finalDlqUrl)
     }
 }
 
@@ -78,7 +77,6 @@ private suspend fun SqsClient.attachDlq(
 private suspend fun SqsClient.doCreateQueue(
     json: ObjectMapper,
     name: Queue.Name,
-    options: SqsConnector.Options,
 ) = either {
     val url =
         execute(unknownFailure("SQS.CreateQueue", name)) {
@@ -88,7 +86,6 @@ private suspend fun SqsClient.doCreateQueue(
                         buildAttributes(
                             json,
                             isFifo = name.designatesFifo(),
-                            visibilityTimeout = options.defaultVisibilityTimeout,
                         )
                 }
                 requireNotNull(q.queueUrl) { "Call did not return a url" }

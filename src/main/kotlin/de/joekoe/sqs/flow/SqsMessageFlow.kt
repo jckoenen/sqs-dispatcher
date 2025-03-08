@@ -20,21 +20,24 @@ import de.joekoe.sqs.utils.TypedMap.Companion.byType
 import de.joekoe.sqs.utils.asTags
 import de.joekoe.sqs.utils.id
 import de.joekoe.sqs.utils.putAll
+import kotlin.time.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow {
+
     override fun subscribe(
         scope: CoroutineScope,
         queueName: Queue.Name,
         consumer: MessageConsumer,
+        visibilityTimeout: Duration,
     ): DrainControl =
         flow {
                 connector
                     .getQueue(queueName)
-                    .map { receiveFlow(it, consumer, scope) }
+                    .map { receiveFlow(it, consumer, scope, visibilityTimeout) }
                     .onRight { it.collect(::emit) }
                     .onLeft { TODO("Retry?") }
             }
@@ -44,10 +47,11 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
         queue: Queue,
         consumer: MessageConsumer,
         scope: CoroutineScope,
+        visibilityTimeout: Duration,
     ): Flow<Unit> =
         drainSource()
-            .map { connector.receiveMessages(queue).getOrElse { TODO("$it") } }
-            .through(consumer.asStage().compose(VisibilityExtensionStage(connector, queue.visibilityTimeout, scope)))
+            .map { connector.receiveMessages(queue, visibilityTimeout = visibilityTimeout).getOrElse { TODO("$it") } }
+            .through(consumer.asStage().compose(VisibilityExtensionStage(connector, visibilityTimeout, scope)))
             .map { actions ->
                 val byType = actions.byType()
 

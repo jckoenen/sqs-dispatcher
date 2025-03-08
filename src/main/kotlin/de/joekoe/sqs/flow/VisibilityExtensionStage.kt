@@ -6,6 +6,8 @@ import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
 import de.joekoe.sqs.SqsFailure.ChangeMessagesFailure.MessageAlreadyDeleted
 import de.joekoe.sqs.allTags
+import de.joekoe.sqs.utils.asTags
+import de.joekoe.sqs.utils.id
 import de.joekoe.sqs.utils.identityCode
 import de.joekoe.sqs.utils.putAll
 import kotlin.time.Duration
@@ -45,16 +47,16 @@ private class VisibilityManager(
     suspend fun startTracking(messages: List<MessageBound>) {
         messages.groupBy(MessageBound::queue).forEach { (queue, byQueue) ->
             val ref = activeBatches.register(byQueue.map(MessageBound::receiptHandle))
-            val interval = queue.visibilityTimeout - extensionThreshold
+            val interval = extensionDuration - extensionThreshold
             schedule(interval, queue, ref)
 
             logger
                 .atDebug()
                 .addKeyValue("visibilityBatch.id", ref.identityCode())
                 .addKeyValue("visibilityBatch.size", byQueue.size)
-                .addKeyValue("queue.name", queue.name)
-                .addKeyValue("queue.timeout", queue.visibilityTimeout.toString())
-                .addKeyValue("interval", interval.toString())
+                .addKeyValue("refresh.interval", interval.toString())
+                .addKeyValue("refresh.duration", extensionDuration.toString())
+                .putAll(queue.id().asTags())
                 .log("Started automatic visibility management")
         }
     }

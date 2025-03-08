@@ -16,20 +16,21 @@ import kotlin.time.Duration
 internal class KotlinSqsConnector(
     private val sqsClient: SqsClient,
     private val json: ObjectMapper,
-    private val options: SqsConnector.Options,
 ) : SqsConnector {
     override suspend fun getQueue(name: Queue.Name): Either<SqsFailure.GetQueueFailure, Queue> =
-        sqsClient.getQueue(json, name, options)
+        sqsClient.getQueue(json, name)
 
     override suspend fun getOrCreateQueue(
         name: Queue.Name,
         createDlq: Boolean,
-    ): Either<SqsFailure.CreateQueueFailure, Queue> = sqsClient.getOrCreateQueue(json, name, createDlq, options)
+    ): Either<SqsFailure.CreateQueueFailure, Queue> = sqsClient.getOrCreateQueue(json, name, createDlq)
 
     override suspend fun receiveMessages(
         queue: Queue,
-        timeout: Duration,
-    ): Either<SqsFailure.ReceiveMessagesFailure, List<Message<String>>> = sqsClient.receiveMessages(queue, timeout)
+        receiveTimeout: Duration,
+        visibilityTimeout: Duration,
+    ): Either<SqsFailure.ReceiveMessagesFailure, List<Message<String>>> =
+        sqsClient.receiveMessages(queue, receiveTimeout, visibilityTimeout)
 
     override suspend fun sendMessages(
         queueUrl: Queue.Url,
