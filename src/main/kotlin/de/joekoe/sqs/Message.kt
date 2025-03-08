@@ -36,18 +36,3 @@ internal data class FifoMessageImpl<T : Any>(
     override val groupId: Message.Fifo.GroupId,
     override val deduplicationId: Message.Fifo.DeduplicationId,
 ) : Message<T>, Message.Fifo
-
-internal inline fun <T : Any, R : Any> Message<T>.map(f: (T) -> R) =
-    when (this) {
-        is MessageImpl -> MessageImpl(id, receiptHandle, attributes, f(content), queue)
-        is FifoMessageImpl ->
-            FifoMessageImpl(
-                id,
-                receiptHandle,
-                attributes,
-                f(content),
-                queue,
-                groupId,
-                deduplicationId,
-            )
-    }

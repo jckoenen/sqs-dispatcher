@@ -3,7 +3,6 @@ package de.joekoe.sqs.flow
 import de.joekoe.sqs.Message
 import de.joekoe.sqs.MessageConsumer
 import de.joekoe.sqs.impl.kotlin.SQS_BATCH_SIZE
-import de.joekoe.sqs.map
 import de.joekoe.sqs.utils.chunked
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.asFlow

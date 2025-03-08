@@ -8,7 +8,6 @@ import de.joekoe.sqs.SqsFailure.ChangeMessagesFailure.MessageAlreadyDeleted
 import de.joekoe.sqs.allTags
 import de.joekoe.sqs.utils.asTags
 import de.joekoe.sqs.utils.id
-import de.joekoe.sqs.utils.identityCode
 import de.joekoe.sqs.utils.putAll
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -139,4 +138,6 @@ private class VisibilityManager(
             suspend fun items() = mutex.withLock(action = items::toSet)
         }
     }
+
+    @OptIn(ExperimentalStdlibApi::class) private fun Any.identityCode() = System.identityHashCode(this).toHexString()
 }
