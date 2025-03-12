@@ -8,6 +8,7 @@ import de.joekoe.sqs.Failure
 import de.joekoe.sqs.MessageConsumer
 import de.joekoe.sqs.MessageConsumer.Action.DeleteMessage
 import de.joekoe.sqs.MessageConsumer.Action.MoveMessageToDlq
+import de.joekoe.sqs.MessageConsumer.Action.RetryBackoff
 import de.joekoe.sqs.MessageFlow
 import de.joekoe.sqs.OutboundMessage
 import de.joekoe.sqs.Queue
@@ -16,6 +17,7 @@ import de.joekoe.sqs.SqsFailure
 import de.joekoe.sqs.allTags
 import de.joekoe.sqs.impl.kotlin.SEND_OPERATION
 import de.joekoe.sqs.impl.kotlin.batchCallFailed
+import de.joekoe.sqs.impl.kotlin.combine
 import de.joekoe.sqs.utils.TypedMap.Companion.byType
 import de.joekoe.sqs.utils.asTags
 import de.joekoe.sqs.utils.id
@@ -23,6 +25,7 @@ import de.joekoe.sqs.utils.putAll
 import kotlin.time.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
@@ -57,6 +60,7 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
 
                 byType.onMatching { moveToDlq(it, queue) }?.also { logOutcome(it, queue) }
                 byType.onMatching { delete(it, queue) }?.also { logOutcome(it, queue) }
+                byType.onMatching { backoff(it, queue) }?.also { logOutcome(it, queue) }
             }
 
     private suspend fun moveToDlq(
@@ -78,6 +82,14 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
             connector.sendMessages(dlq, messages)
         }
     }
+
+    private suspend fun backoff(toSend: Nel<RetryBackoff>, queue: Queue) =
+        toSend
+            .groupBy(RetryBackoff::backoffDuration, RetryBackoff::receiptHandle)
+            .entries
+            .asFlow()
+            .map { (duration, handles) -> connector.extendMessageVisibility(queue.url, handles, duration) }
+            .combine()
 
     private suspend fun delete(toDelete: List<DeleteMessage>, queue: Queue) =
         connector.deleteMessages(queue.url, toDelete.map(DeleteMessage::receiptHandle))
