@@ -1,8 +1,11 @@
 package de.joekoe.sqs.flow
 
+import arrow.core.Either
 import arrow.core.Nel
 import arrow.core.getOrElse
 import arrow.core.leftIor
+import arrow.resilience.Schedule
+import arrow.resilience.retryEither
 import de.joekoe.sqs.BatchResult
 import de.joekoe.sqs.Failure
 import de.joekoe.sqs.MessageConsumer
@@ -10,6 +13,7 @@ import de.joekoe.sqs.MessageConsumer.Action.DeleteMessage
 import de.joekoe.sqs.MessageConsumer.Action.MoveMessageToDlq
 import de.joekoe.sqs.MessageConsumer.Action.RetryBackoff
 import de.joekoe.sqs.MessageFlow
+import de.joekoe.sqs.MessageFlow.Companion.logger
 import de.joekoe.sqs.OutboundMessage
 import de.joekoe.sqs.Queue
 import de.joekoe.sqs.SqsConnector
@@ -23,6 +27,8 @@ import de.joekoe.sqs.utils.asTags
 import de.joekoe.sqs.utils.id
 import de.joekoe.sqs.utils.putAll
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -38,11 +44,11 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
         visibilityTimeout: Duration,
     ): DrainControl =
         flow {
-                connector
-                    .getQueue(queueName)
-                    .map { receiveFlow(it, consumer, scope, visibilityTimeout) }
-                    .onRight { it.collect(::emit) }
-                    .onLeft { TODO("Retry?") }
+                val queue =
+                    retryIndefinitely(10.seconds, 5.minutes) {
+                        connector.getQueue(queueName).warnOnLeft("Could not resolve queue url. Retrying...")
+                    }
+                receiveFlow(queue, consumer, scope, visibilityTimeout).collect(::emit)
             }
             .launchDraining(scope)
 
@@ -53,7 +59,13 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
         visibilityTimeout: Duration,
     ): Flow<Unit> =
         drainSource()
-            .map { connector.receiveMessages(queue, visibilityTimeout = visibilityTimeout).getOrElse { TODO("$it") } }
+            .map {
+                retryIndefinitely(1.seconds, 1.minutes) {
+                    connector
+                        .receiveMessages(queue, visibilityTimeout = visibilityTimeout)
+                        .warnOnLeft("Failed to poll messages. Retrying...")
+                }
+            }
             .through(consumer.asStage().compose(VisibilityExtensionStage(connector, visibilityTimeout, scope)))
             .map { actions ->
                 val byType = actions.byType()
@@ -96,7 +108,7 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
 
     private fun logOutcome(batchResult: BatchResult<Failure, *>, queue: Queue) {
         batchResult.getOrNull()?.let { success ->
-            MessageFlow.logger
+            logger
                 .atDebug()
                 .putAll(queue.id().asTags())
                 .addKeyValue("messages.count", success.size)
@@ -104,11 +116,27 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
         }
 
         batchResult.leftOrNull().orEmpty().forEach { (cause, messages) ->
-            MessageFlow.logger
+            logger
                 .atWarn()
                 .putAll(cause.allTags())
                 .addKeyValue("messages.count", messages.size)
                 .log("Action (partially?) failed")
         }
     }
+
+    private fun <F : Failure, T> Either<F, T>.warnOnLeft(message: String) = onLeft {
+        logger.atWarn().putAll(it.allTags()).log(message)
+    }
+
+    private suspend inline fun <T> retryIndefinitely(
+        base: Duration,
+        max: Duration,
+        f: () -> Either<Failure, T>,
+    ): T =
+        Schedule.exponential<Any>(base)
+            .doUntil { _, duration -> duration < max }
+            .andThen(Schedule.spaced<Any>(max) and Schedule.forever())
+            .jittered(min = 0.5, max = 1.5)
+            .retryEither(f)
+            .getOrElse { error("Indefinite retry exhausted!") }
 }
