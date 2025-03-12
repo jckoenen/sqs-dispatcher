@@ -32,23 +32,23 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.map
 
 internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow {
 
-    override fun subscribe(
+    override fun launch(
         scope: CoroutineScope,
         queueName: Queue.Name,
         consumer: MessageConsumer,
         visibilityTimeout: Duration,
     ): DrainControl =
-        flow {
+        channelFlow {
                 val queue =
                     retryIndefinitely(10.seconds, 5.minutes) {
                         connector.getQueue(queueName).warnOnLeft("Could not resolve queue url. Retrying...")
                     }
-                receiveFlow(queue, consumer, scope, visibilityTimeout).collect(::emit)
+                receiveFlow(queue, consumer, this, visibilityTimeout).collect(::send)
             }
             .launchDraining(scope)
 

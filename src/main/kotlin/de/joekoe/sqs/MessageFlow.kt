@@ -7,7 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import org.slf4j.LoggerFactory
 
 interface MessageFlow {
-    fun subscribe(
+    fun launch(
         scope: CoroutineScope,
         queueName: Queue.Name,
         consumer: MessageConsumer,
