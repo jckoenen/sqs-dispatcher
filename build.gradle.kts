@@ -26,18 +26,19 @@ dependencies {
     api(platform(libs.aws.kotlin.bom))
     api(libs.aws.kotlin.sqs)
 
-    implementation(platform(libs.kotlinx.coroutines.bom))
+    api(platform(libs.kotlinx.coroutines.bom))
     api(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.slf4j)
 
     implementation(libs.kotlinx.datetime)
 
-    api(platform(libs.jackson.bom))
-    api(libs.jackson.databind)
+    implementation(platform(libs.jackson.bom))
+    implementation(libs.jackson.databind)
     implementation(libs.jackson.kotlin)
 
-    implementation(platform(libs.arrow.bom))
+    api(platform(libs.arrow.bom))
     api(libs.arrow.core)
+    implementation(libs.arrow.resilience)
 
     compileOnly(libs.slf4j.api)
 

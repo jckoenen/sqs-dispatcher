@@ -13,7 +13,7 @@ arrow = "2.0.1"
 kotest = "5.9.1"
 kotest-testcontainers = "2.0.2"
 kotest-arrow = "2.0.0"
-testcontainers = "1.20.5"
+testcontainers = "1.20.6"
 
 [plugins]
 versions = { id = "com.github.ben-manes.versions", version.ref = "versions" }
@@ -44,6 +44,7 @@ logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "lo
 
 arrow-bom = { module = "io.arrow-kt:arrow-stack", version.ref = "arrow" }
 arrow-core = { module = "io.arrow-kt:arrow-core" }
+arrow-resilience = { module = "io.arrow-kt:arrow-resilience" }
 
 kotest-bom = { module = "io.kotest:kotest-bom", version.ref = "kotest" }
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5" }
