@@ -25,6 +25,7 @@ import de.joekoe.sqs.impl.kotlin.combine
 import de.joekoe.sqs.utils.TypedMap.Companion.byType
 import de.joekoe.sqs.utils.asTags
 import de.joekoe.sqs.utils.id
+import de.joekoe.sqs.utils.mdc
 import de.joekoe.sqs.utils.putAll
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -33,7 +34,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 
 internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow {
 
@@ -59,6 +64,7 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
         visibilityTimeout: Duration,
     ): Flow<Unit> =
         drainSource()
+            .onStart { logger.info("Consumer started") }
             .map {
                 retryIndefinitely(1.seconds, 1.minutes) {
                     connector
@@ -66,14 +72,18 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
                         .warnOnLeft("Failed to poll messages. Retrying...")
                 }
             }
+            .onEach { if (it.isEmpty()) logger.debug("No messages received") }
             .through(consumer.asStage().compose(VisibilityExtensionStage(connector, visibilityTimeout, scope)))
             .map { actions ->
                 val byType = actions.byType()
 
-                byType.onMatching { moveToDlq(it, queue) }?.also { logOutcome(it, queue) }
-                byType.onMatching { delete(it, queue) }?.also { logOutcome(it, queue) }
-                byType.onMatching { backoff(it, queue) }?.also { logOutcome(it, queue) }
+                byType.onMatching { moveToDlq(it, queue) }?.also(::logOutcome)
+                byType.onMatching { delete(it, queue) }?.also(::logOutcome)
+                byType.onMatching { backoff(it, queue) }?.also(::logOutcome)
             }
+            .onCompletion { logger.info("Consumer stopped") }
+            .flowOn(mdc(queue.id().asTags()))
+            .map {}
 
     private suspend fun moveToDlq(
         toSend: Nel<MoveMessageToDlq>,
@@ -106,20 +116,16 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
     private suspend fun delete(toDelete: List<DeleteMessage>, queue: Queue) =
         connector.deleteMessages(queue.url, toDelete.map(DeleteMessage::receiptHandle))
 
-    private fun logOutcome(batchResult: BatchResult<Failure, *>, queue: Queue) {
+    private fun logOutcome(batchResult: BatchResult<Failure, *>) {
         batchResult.getOrNull()?.let { success ->
-            logger
-                .atDebug()
-                .putAll(queue.id().asTags())
-                .addKeyValue("messages.count", success.size)
-                .log("Action succeeded")
+            logger.atDebug().addKeyValue("messages.count", success.size).log("Action succeeded")
         }
 
         batchResult.leftOrNull().orEmpty().forEach { (cause, messages) ->
             logger
                 .atWarn()
-                .putAll(cause.allTags())
                 .addKeyValue("messages.count", messages.size)
+                .putAll(cause.allTags())
                 .log("Action (partially?) failed")
         }
     }
