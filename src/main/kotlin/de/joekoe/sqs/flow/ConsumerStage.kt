@@ -8,12 +8,12 @@ import de.joekoe.sqs.MessageConsumer.Action.RetryBackoff
 import de.joekoe.sqs.MessageFlow
 import de.joekoe.sqs.impl.kotlin.SQS_BATCH_SIZE
 import de.joekoe.sqs.utils.chunked
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 private typealias ConsumerStage = FlowStage<Message<String>, MessageConsumer.Action>
 
@@ -43,7 +43,8 @@ private suspend fun MessageConsumer.Individual.handleSafely(message: Message<Str
                 .addKeyValue("sqs.consumer", this::class)
                 .setCause(it)
                 .addKeyValue("sqs.message.id", message.id)
-                .log("Consumer threw uncaught exception, message will be retried after $EXCEPTION_BACKOFF. " +
+                .log(
+                    "Consumer threw uncaught exception, message will be retried after $EXCEPTION_BACKOFF. " +
                         "To suppress this message, return MessageConsumer.Action.RetryBackoff instead.")
         }
         .getOrElse { RetryBackoff(message, EXCEPTION_BACKOFF) }

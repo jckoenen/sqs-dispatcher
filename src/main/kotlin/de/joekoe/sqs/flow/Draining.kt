@@ -26,7 +26,7 @@ fun drainSource(): Flow<Unit> = flow {
 }
 
 fun Flow<Any?>.launchDraining(scope: CoroutineScope): DrainControl {
-    val element = DrainControlElement(false)
+    val element = DrainControlElement(true)
     val job = scope.launch(element) { collect() }
     return DrainControlImpl(job, element)
 }
