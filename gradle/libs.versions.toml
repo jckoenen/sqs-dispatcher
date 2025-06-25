@@ -1,19 +1,19 @@
 [versions]
-kotlin = "2.1.10"
+kotlin = "2.2.0"
 versions = "0.52.0"
-spotless = "7.0.2"
+spotless = "7.0.4"
 
-kotlinx-coroutines = "1.10.1"
-kotlinx-datetime = "0.6.2"
-aws-kotlin = "1.4.32"
-jackson = "2.18.3"
+kotlinx-coroutines = "1.10.2"
+kotlinx-datetime = "0.7.0"
+aws-kotlin = "1.4.112"
+jackson = "2.19.1"
 slf4j = "2.0.17"
-logback = "1.5.17"
-arrow = "2.0.1"
+logback = "1.5.18"
+arrow = "2.1.2"
 kotest = "5.9.1"
 kotest-testcontainers = "2.0.2"
 kotest-arrow = "2.0.0"
-testcontainers = "1.20.6"
+testcontainers = "1.21.2"
 
 [plugins]
 versions = { id = "com.github.ben-manes.versions", version.ref = "versions" }
