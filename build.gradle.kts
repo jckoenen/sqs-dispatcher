@@ -43,7 +43,7 @@ dependencies {
     compileOnly(libs.slf4j.api)
 
     testImplementation(libs.kotlin.reflect)
-    testImplementation(libs.logback.classic)
+    implementation(libs.logback.classic)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.coroutines.debug)
 

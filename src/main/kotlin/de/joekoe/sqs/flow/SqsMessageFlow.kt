@@ -53,14 +53,13 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
                     retryIndefinitely(10.seconds, 5.minutes) {
                         connector.getQueue(queueName).warnOnLeft("Could not resolve queue url. Retrying...")
                     }
-                receiveFlow(queue, consumer, this, visibilityTimeout).collect(::send)
+                receiveFlow(queue, consumer, visibilityTimeout).collect(::send)
             }
             .launchDraining(scope)
 
     private fun receiveFlow(
         queue: Queue,
         consumer: MessageConsumer,
-        scope: CoroutineScope,
         visibilityTimeout: Duration,
     ): Flow<Unit> =
         drainSource()
@@ -73,7 +72,7 @@ internal class SqsMessageFlow(private val connector: SqsConnector) : MessageFlow
                 }
             }
             .onEach { if (it.isEmpty()) logger.debug("No messages received") }
-            .through(consumer.asStage().compose(VisibilityExtensionStage(connector, visibilityTimeout, scope)))
+            .through(consumer.asStage().compose(VisibilityExtensionStage(connector, visibilityTimeout)))
             .map { actions ->
                 val byType = actions.byType()
 

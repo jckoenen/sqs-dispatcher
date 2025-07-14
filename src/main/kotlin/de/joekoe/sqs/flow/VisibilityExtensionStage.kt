@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -24,11 +25,12 @@ import org.slf4j.LoggerFactory
 class VisibilityExtensionStage<A : MessageBound>(
     connector: SqsConnector,
     extensionDuration: Duration,
-    scope: CoroutineScope,
 ) : FlowStage<A, A> {
-    private val manager = VisibilityManager(connector, extensionDuration, scope)
+    private val manager = VisibilityManager(connector, extensionDuration)
 
-    override fun inbound(upstream: Flow<List<A>>): Flow<List<A>> = upstream.onEach(manager::startTracking)
+    override fun inbound(upstream: Flow<List<A>>): Flow<List<A>> = channelFlow {
+        upstream.onEach { manager.startTracking(it, this) }.collect(::send)
+    }
 
     override fun <C : MessageBound> outbound(upstream: Flow<List<C>>): Flow<List<C>> =
         upstream.onEach { batch -> batch.forEach { manager.stopTracking(it) } }
@@ -37,17 +39,16 @@ class VisibilityExtensionStage<A : MessageBound>(
 private class VisibilityManager(
     private val connector: SqsConnector,
     private val extensionDuration: Duration,
-    scope: CoroutineScope,
     private val extensionThreshold: Duration = 3.seconds,
-) : CoroutineScope by scope {
+) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val activeBatches = BatchMap<Message.ReceiptHandle>()
 
-    suspend fun startTracking(messages: List<MessageBound>) {
+    suspend fun startTracking(messages: List<MessageBound>, parentScope: CoroutineScope) {
         messages.groupBy(MessageBound::queue).forEach { (queue, byQueue) ->
             val ref = activeBatches.register(byQueue.map(MessageBound::receiptHandle))
             val interval = extensionDuration - extensionThreshold
-            schedule(interval, queue, ref)
+            parentScope.schedule(interval, queue, ref)
 
             logger
                 .atDebug()
@@ -64,48 +65,51 @@ private class VisibilityManager(
         activeBatches.remove(message.receiptHandle)
     }
 
-    private fun schedule(delay: Duration, queue: Queue, reference: BatchMap.BatchRef<Message.ReceiptHandle>): Job =
-        launch {
-            delay(delay)
-            val messages = reference.items()
-            val log =
-                logger
-                    .atDebug()
-                    .addKeyValue("visibilityBatch.id", messages.identityCode())
-                    .addKeyValue("visibilityBatch.size", messages.size)
+    private fun CoroutineScope.schedule(
+        delay: Duration,
+        queue: Queue,
+        reference: BatchMap.BatchRef<Message.ReceiptHandle>,
+    ): Job = launch {
+        delay(delay)
+        val messages = reference.items()
+        val log =
+            logger
+                .atDebug()
+                .addKeyValue("visibilityBatch.id", messages.identityCode())
+                .addKeyValue("visibilityBatch.size", messages.size)
 
-            if (messages.isEmpty()) {
-                log.log("No messages left to extend visibility")
-                return@launch
-            }
-            log.log("Extending visibility")
-
-            connector
-                .extendMessageVisibility(queue.url, messages, extensionDuration)
-                .leftOrNull()
-                .orEmpty()
-                .flatMap { (cause, affected) -> affected.map { cause to it } }
-                .onEach { (cause, failure) ->
-                    if (cause is MessageAlreadyDeleted) {
-                        logger
-                            .atDebug()
-                            .addKeyValue("failure.ref", failure.reference)
-                            .log("Message was already deleted, ignoring")
-                    } else {
-                        logger
-                            .atWarn()
-                            .putAll(cause.allTags())
-                            .addKeyValue("failure.ref", failure.reference)
-                            .addKeyValue("failure.code", failure.code)
-                            .addKeyValue("failure.message", failure.errorMessage)
-                            .addKeyValue("failure.senderFault", failure.senderFault)
-                            .log("Couldn't extend visibility for message. Will NOT retry")
-                    }
-                }
-                .forEach { (_, failure) -> activeBatches.remove(failure.reference) }
-
-            schedule(extensionDuration - extensionThreshold, queue, reference)
+        if (messages.isEmpty()) {
+            log.log("No messages left to extend visibility")
+            return@launch
         }
+        log.log("Extending visibility")
+
+        connector
+            .extendMessageVisibility(queue.url, messages, extensionDuration)
+            .leftOrNull()
+            .orEmpty()
+            .flatMap { (cause, affected) -> affected.map { cause to it } }
+            .onEach { (cause, failure) ->
+                if (cause is MessageAlreadyDeleted) {
+                    logger
+                        .atDebug()
+                        .addKeyValue("failure.ref", failure.reference)
+                        .log("Message was already deleted, ignoring")
+                } else {
+                    logger
+                        .atWarn()
+                        .putAll(cause.allTags())
+                        .addKeyValue("failure.ref", failure.reference)
+                        .addKeyValue("failure.code", failure.code)
+                        .addKeyValue("failure.message", failure.errorMessage)
+                        .addKeyValue("failure.senderFault", failure.senderFault)
+                        .log("Couldn't extend visibility for message. Will NOT retry")
+                }
+            }
+            .forEach { (_, failure) -> activeBatches.remove(failure.reference) }
+
+        schedule(extensionDuration - extensionThreshold, queue, reference)
+    }
 
     private data class BatchMap<T>(private val batches: MutableMap<T, MutableSet<T>> = mutableMapOf()) {
         /**
