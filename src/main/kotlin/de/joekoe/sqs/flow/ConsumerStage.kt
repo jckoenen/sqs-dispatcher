@@ -5,7 +5,7 @@ import arrow.core.getOrElse
 import de.joekoe.sqs.Message
 import de.joekoe.sqs.MessageConsumer
 import de.joekoe.sqs.MessageConsumer.Action.RetryBackoff
-import de.joekoe.sqs.MessageFlow
+import de.joekoe.sqs.SqsConnector
 import de.joekoe.sqs.impl.kotlin.SQS_BATCH_SIZE
 import de.joekoe.sqs.utils.chunked
 import kotlin.time.Duration.Companion.minutes
@@ -38,7 +38,7 @@ internal fun MessageConsumer.asStage(): ConsumerStage =
 private suspend fun MessageConsumer.Individual.handleSafely(message: Message<String>) =
     Either.catch { handle(message) }
         .onLeft {
-            MessageFlow.logger
+            SqsConnector.logger
                 .atError()
                 .addKeyValue("sqs.consumer", this::class)
                 .setCause(it)
@@ -52,7 +52,7 @@ private suspend fun MessageConsumer.Individual.handleSafely(message: Message<Str
 private suspend fun MessageConsumer.Batch.handleSafely(messages: List<Message<String>>) =
     Either.catch { handle(messages) }
         .onLeft {
-            MessageFlow.logger
+            SqsConnector.logger
                 .atError()
                 .addKeyValue("sqs.consumer", this::class)
                 .setCause(it)

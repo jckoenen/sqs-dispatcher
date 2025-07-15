@@ -17,7 +17,9 @@ repositories { mavenCentral() }
 
 kotlin {
     jvmToolchain(21)
-    compilerOptions { optIn.add("kotlinx.coroutines.ExperimentalCoroutinesApi") }
+    compilerOptions {
+        optIn.add("kotlinx.coroutines.ExperimentalCoroutinesApi")
+    }
 }
 
 dependencies {
@@ -43,7 +45,7 @@ dependencies {
     compileOnly(libs.slf4j.api)
 
     testImplementation(libs.kotlin.reflect)
-    implementation(libs.logback.classic)
+    testImplementation(libs.logback.classic)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.coroutines.debug)
 

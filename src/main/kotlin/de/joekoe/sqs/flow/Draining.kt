@@ -1,48 +1,32 @@
 package de.joekoe.sqs.flow
 
-import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 
+/**
+ * Represents a mechanism to control and manage draining operations within a coroutine-based context. Implementations of
+ * this interface are expected to define the behavior for draining specific resources or flows of data.
+ *
+ * @property job A reference to the coroutine's [Job] that facilitates lifecycle management and structured concurrency
+ *   for the draining operation.
+ */
 sealed interface DrainControl {
     val job: Job
 
     fun drain()
 }
 
+/**
+ * Represents a flow that can be terminated gracefully, ensuring all currently in-flight elements are processed before
+ * the flow is completely stopped. This allows for clean shutdown scenarios where no data is lost during the termination
+ * process.
+ */
+sealed interface DrainableFlow<T> : Flow<T> {
+    fun launchWithDrainControl(scope: CoroutineScope): DrainControl
+}
+
 suspend fun DrainControl.drainAndJoin() {
     drain()
     job.join()
-}
-
-fun drainSource(): Flow<Unit> = flow {
-    val control = currentCoroutineContext()[DrainControlElement]
-    while (control?.active != false) emit(Unit)
-}
-
-fun Flow<Any?>.launchDraining(scope: CoroutineScope): DrainControl {
-    val element = DrainControlElement(true)
-    val job = scope.launch(element) { collect() }
-    return DrainControlImpl(job, element)
-}
-
-private data class DrainControlElement(var active: Boolean) : CoroutineContext.Element {
-    override val key: CoroutineContext.Key<*>
-        get() = DrainControlElement
-
-    companion object : CoroutineContext.Key<DrainControlElement>
-}
-
-private data class DrainControlImpl(
-    override val job: Job,
-    private val element: DrainControlElement,
-) : DrainControl {
-    override fun drain() {
-        element.active = false
-    }
 }
