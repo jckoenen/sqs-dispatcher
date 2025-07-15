@@ -16,7 +16,7 @@ internal fun drainSource(): Flow<Unit> = flow {
     while (control?.active != false) emit(Unit)
 }
 
-internal fun <T> Flow<T>.drainable(): DrainableFlow<T> = DrainableFlowImpl(this)
+fun <T> Flow<T>.drainable(): DrainableFlow<T> = DrainableFlowImpl(this)
 
 @OptIn(ExperimentalTypeInference::class)
 @BuilderInference

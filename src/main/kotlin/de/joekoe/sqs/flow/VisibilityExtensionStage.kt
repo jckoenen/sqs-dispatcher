@@ -1,5 +1,6 @@
 package de.joekoe.sqs.flow
 
+import arrow.core.identity
 import de.joekoe.sqs.Message
 import de.joekoe.sqs.MessageBound
 import de.joekoe.sqs.Queue
@@ -9,18 +10,23 @@ import de.joekoe.sqs.allTags
 import de.joekoe.sqs.utils.asTags
 import de.joekoe.sqs.utils.id
 import de.joekoe.sqs.utils.putAll
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.onTimeout
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 class VisibilityExtensionStage<A : MessageBound>(
     connector: SqsConnector,
@@ -70,12 +76,16 @@ private class VisibilityManager(
         queue: Queue,
         reference: BatchMap.BatchRef<Message.ReceiptHandle>,
     ): Job = launch {
-        delay(delay)
+        select {
+            async { reference.awaitEmpty() }.onAwait {}
+            onTimeout(delay) {}
+        }
+
         val messages = reference.items()
         val log =
             logger
                 .atDebug()
-                .addKeyValue("visibilityBatch.id", messages.identityCode())
+                .addKeyValue("visibilityBatch.id", reference.identityCode())
                 .addKeyValue("visibilityBatch.size", messages.size)
 
         if (messages.isEmpty()) {
@@ -111,7 +121,9 @@ private class VisibilityManager(
         schedule(extensionDuration - extensionThreshold, queue, reference)
     }
 
-    private data class BatchMap<T>(private val batches: MutableMap<T, MutableSet<T>> = mutableMapOf()) {
+    private data class BatchMap<T>(
+        private val batches: MutableMap<T, BatchRef<T>> = mutableMapOf()
+    ) {
         /**
          * Prevents concurrent modification of [batches]
          *
@@ -123,25 +135,42 @@ private class VisibilityManager(
         private val mutex = Mutex()
 
         /**
-         * Enforces batch registration to go through the mutex and associates it with that same mutex
+         * Enforces batch registration to go through the mutex and associates it with that same
+         * mutex
          *
-         * The items reference in the ref is itself mutable, meaning a call to [remove] will remove it from our global
-         * [batches] map, but also from the individual ref it was contained in
+         * The items reference in the ref is itself mutable, meaning a call to [remove] will remove
+         * it from our global [batches] map, but also from the individual ref it was contained in
          */
         suspend fun register(batch: Collection<T>): BatchRef<T> =
             mutex.withLock {
                 val inner = batch.toMutableSet()
-                inner.forEach { k -> batches[k] = inner }
-                BatchRef(inner, mutex)
+                val ref = BatchRef(inner, mutex)
+                inner.forEach { k -> batches[k] = ref }
+                ref
             }
 
-        /** Removes the element from the global reference AND from whatever [BatchRef] it was associated to. */
+        /**
+         * Removes the element from the global reference AND from whatever [BatchRef] it was
+         * associated to.
+         */
         suspend fun remove(element: T) = mutex.withLock { batches.remove(element)?.remove(element) }
 
         data class BatchRef<T>(private val items: MutableSet<T>, private val mutex: Mutex) {
+            private val empty = MutableStateFlow(false)
+
             suspend fun items() = mutex.withLock(action = items::toSet)
+
+            fun remove(item: T) {
+                if (items.remove(item) && items.isEmpty()) {
+                    empty.value = true
+                }
+            }
+
+            suspend fun awaitEmpty() {
+                empty.filter(::identity).firstOrNull()
+            }
         }
     }
 
-    @OptIn(ExperimentalStdlibApi::class) private fun Any.identityCode() = System.identityHashCode(this).toHexString()
+    private fun Any.identityCode() = System.identityHashCode(this).toHexString()
 }
