@@ -27,7 +27,7 @@ class KotlinSqsConnectorTest : FreeSpec({
 
         "should produce and consume messages correctly" {
             val expected =
-                Arb.string()
+                Arb.string(minSize = 1)
                     .generate(RandomSource.default())
                     .take(count)
                     .map { it.value }

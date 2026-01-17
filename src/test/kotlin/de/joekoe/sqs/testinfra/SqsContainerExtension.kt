@@ -21,14 +21,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
-import org.testcontainers.containers.localstack.LocalStackContainer
+import org.testcontainers.localstack.LocalStackContainer
 import org.testcontainers.utility.DockerImageName
 
 internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListener {
     private val NON_WORD_CHARS = """\W""".toRegex()
     private val container =
-        LocalStackContainer(DockerImageName.parse("localstack/localstack:3.8.1"))
-            .withServices(LocalStackContainer.Service.SQS)
+        DockerImageName.parse("localstack/localstack:4.7").let(::LocalStackContainer).withServices("sqs")
 
     private val scope =
         CoroutineScope(

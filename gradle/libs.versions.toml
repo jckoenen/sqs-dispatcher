@@ -13,7 +13,7 @@ arrow = "2.2.1.1"
 kotest = "5.9.1"
 kotest-testcontainers = "2.0.2"
 kotest-arrow = "2.0.0"
-testcontainers = "1.21.3"
+testcontainers = "2.0.3"
 
 [plugins]
 versions = { id = "com.github.ben-manes.versions", version.ref = "versions" }
@@ -56,4 +56,4 @@ kotest-extensions-xml = { module = "io.kotest:kotest-extensions-junitxml" }
 
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version.ref = "testcontainers" }
 testcontainers-java = { module = "org.testcontainers:testcontainers" }
-testcontainers-localstack = { module = "org.testcontainers:localstack" }
+testcontainers-localstack = { module = "org.testcontainers:testcontainers-localstack" }
