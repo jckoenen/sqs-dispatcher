@@ -9,8 +9,6 @@ import io.kotest.core.test.testCoroutineScheduler
 import io.kotest.matchers.collections.shouldBeMonotonicallyIncreasingWith
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import kotlin.time.Duration.Companion.INFINITE
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +20,8 @@ import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.take
+import kotlin.time.Duration.Companion.INFINITE
+import kotlin.time.Duration.Companion.milliseconds
 
 class TimedChunkTest : FreeSpec({
     val itemCount = 100
