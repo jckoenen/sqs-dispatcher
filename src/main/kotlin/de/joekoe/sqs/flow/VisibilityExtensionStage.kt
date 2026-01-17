@@ -10,6 +10,8 @@ import de.joekoe.sqs.allTags
 import de.joekoe.sqs.utils.asTags
 import de.joekoe.sqs.utils.id
 import de.joekoe.sqs.utils.putAll
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -25,8 +27,6 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 class VisibilityExtensionStage<A : MessageBound>(
     connector: SqsConnector,
@@ -121,9 +121,7 @@ private class VisibilityManager(
         schedule(extensionDuration - extensionThreshold, queue, reference)
     }
 
-    private data class BatchMap<T>(
-        private val batches: MutableMap<T, BatchRef<T>> = mutableMapOf()
-    ) {
+    private data class BatchMap<T>(private val batches: MutableMap<T, BatchRef<T>> = mutableMapOf()) {
         /**
          * Prevents concurrent modification of [batches]
          *
@@ -135,11 +133,10 @@ private class VisibilityManager(
         private val mutex = Mutex()
 
         /**
-         * Enforces batch registration to go through the mutex and associates it with that same
-         * mutex
+         * Enforces batch registration to go through the mutex and associates it with that same mutex
          *
-         * The items reference in the ref is itself mutable, meaning a call to [remove] will remove
-         * it from our global [batches] map, but also from the individual ref it was contained in
+         * The items reference in the ref is itself mutable, meaning a call to [remove] will remove it from our global
+         * [batches] map, but also from the individual ref it was contained in
          */
         suspend fun register(batch: Collection<T>): BatchRef<T> =
             mutex.withLock {
@@ -149,10 +146,7 @@ private class VisibilityManager(
                 ref
             }
 
-        /**
-         * Removes the element from the global reference AND from whatever [BatchRef] it was
-         * associated to.
-         */
+        /** Removes the element from the global reference AND from whatever [BatchRef] it was associated to. */
         suspend fun remove(element: T) = mutex.withLock { batches.remove(element)?.remove(element) }
 
         data class BatchRef<T>(private val items: MutableSet<T>, private val mutex: Mutex) {
