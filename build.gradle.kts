@@ -77,6 +77,9 @@ tasks {
     }
 
     dependencyUpdates {
+        // https://github.com/ben-manes/gradle-versions-plugin/issues/968
+        doFirst { gradle.startParameter.isParallelProjectExecutionEnabled = false }
+
         val stableVersion = "^[0-9,.v-]+(-r)?$".toRegex()
         val stableKeywords = listOf("release", "final", "ga")
 
