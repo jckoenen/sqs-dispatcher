@@ -1,4 +1,5 @@
 import com.diffplug.gradle.spotless.BaseKotlinExtension
+import com.diffplug.spotless.kotlin.KtfmtStep
 import com.github.benmanes.gradle.versions.updates.gradle.GradleReleaseChannel
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
@@ -95,7 +96,7 @@ spotless {
             it.setBlockIndent(4)
             it.setContinuationIndent(4)
             it.setRemoveUnusedImports(true)
-            it.setManageTrailingCommas(false)
+            it.setTrailingCommaManagementStrategy(KtfmtStep.TrailingCommaManagementStrategy.NONE)
         }
         targetExcludeIfContentContains("import io.kotest.core.spec.style.")
     }
