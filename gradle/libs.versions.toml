@@ -2,6 +2,7 @@
 kotlin = "2.3.0"
 versions = "0.53.0"
 spotless = "8.1.0"
+maven-publish = "0.35.0"
 
 kotlinx-coroutines = "1.10.2"
 kotlinx-datetime = "0.7.1-0.6.x-compat" # https://github.com/aws/aws-sdk-kotlin/issues/1755
@@ -17,6 +18,7 @@ testcontainers = "2.0.3"
 versions = { id = "com.github.ben-manes.versions", version.ref = "versions" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish"}
 
 [libraries]
 kotlin-stdlib = {module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin"}

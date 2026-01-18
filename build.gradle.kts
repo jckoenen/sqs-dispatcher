@@ -2,17 +2,18 @@ import com.diffplug.gradle.spotless.BaseKotlinExtension
 import com.diffplug.spotless.kotlin.KtfmtStep
 import com.github.benmanes.gradle.versions.updates.gradle.GradleReleaseChannel
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.gradle.kotlin.dsl.signing
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.versions)
     alias(libs.plugins.spotless)
-    application
+    alias(libs.plugins.maven.publish)
 }
 
 group = "io.github.jckoenen"
 
-version = "1.0-SNAPSHOT"
+version = "0.1-SNAPSHOT"
 
 repositories { mavenCentral() }
 
@@ -85,7 +86,7 @@ tasks {
 
         fun isStable(version: String): Boolean =
             stableKeywords.any { version.contains(it, ignoreCase = true) } ||
-                stableVersion.matches(version)
+                    stableVersion.matches(version)
 
         gradleReleaseChannel = GradleReleaseChannel.CURRENT.id
         rejectVersionIf { isStable(candidate.version) != isStable(currentVersion) }
@@ -106,4 +107,34 @@ spotless {
 
     kotlin { defaultFormat() }
     kotlinGradle { defaultFormat() }
+}
+
+mavenPublishing {
+    publishToMavenCentral(automaticRelease = true, validateDeployment = true)
+    signAllPublications()
+
+    pom {
+        name = "SQS Connector"
+        description = "Utilities to connect to AWS SQS with a functional interface"
+        inceptionYear = "2025"
+        licenses {
+            license {
+                name = "The Apache License, Version 2.0"
+                url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                distribution = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+            }
+        }
+        developers {
+            developer {
+                id = "jckoenen"
+                name = "Johannes Koenen"
+                url = "https://github.com/jckoenen"
+            }
+        }
+        scm {
+            url = "https://github.com/jckoenen/sqs-connector"
+            connection = "scm:git:git://github.com/jckoenen/sqs-connector.git"
+            developerConnection = "scm:git:ssh://git@github.com:jckoenen/sqs-connector.git"
+        }
+    }
 }
