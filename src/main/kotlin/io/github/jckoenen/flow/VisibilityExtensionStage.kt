@@ -30,21 +30,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
 
-class VisibilityExtensionStage<A : MessageBound>(
-    connector: SqsConnector,
-    extensionDuration: Duration,
-) : FlowStage<A, A> {
-    private val manager = VisibilityManager(connector, extensionDuration)
-
-    override fun inbound(upstream: Flow<List<A>>): Flow<List<A>> = channelFlow {
-        upstream.onEach { manager.startTracking(it, this) }.collect(::send)
+internal fun <T : MessageBound, C : Collection<T>> VisibilityManager.trackInbound(flow: Flow<C>): Flow<C> =
+    channelFlow {
+        flow.onEach { startTracking(it, this) }.collect(::send)
     }
 
-    override fun <C : MessageBound> outbound(upstream: Flow<List<C>>): Flow<List<C>> =
-        upstream.onEach { batch -> batch.forEach { manager.stopTracking(it) } }
-}
+internal fun <T : MessageBound, C : Collection<T>> VisibilityManager.trackOutbound(flow: Flow<C>) =
+    flow.onEach { batch -> batch.forEach { stopTracking(it) } }
 
-private class VisibilityManager(
+internal class VisibilityManager(
     private val connector: SqsConnector,
     private val extensionDuration: Duration,
     private val extensionThreshold: Duration = 3.seconds,
@@ -53,7 +47,7 @@ private class VisibilityManager(
     private val activeBatches = BatchMap<Message.ReceiptHandle>()
     private val interval = maxOf(500.milliseconds, extensionDuration - extensionThreshold)
 
-    suspend fun startTracking(messages: List<MessageBound>, parentScope: CoroutineScope) {
+    suspend fun startTracking(messages: Collection<MessageBound>, parentScope: CoroutineScope) {
         messages.groupBy(MessageBound::queue).forEach { (queue, byQueue) ->
             val ref = activeBatches.register(byQueue.map(MessageBound::receiptHandle))
             parentScope.schedule(interval, queue, ref)

@@ -10,29 +10,24 @@ import io.github.jckoenen.impl.kotlin.SQS_BATCH_SIZE
 import io.github.jckoenen.utils.chunked
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
-private typealias ConsumerStage = FlowStage<Message<String>, MessageConsumer.Action>
-
 private val CHUNK_TIMEOUT = 30.seconds
 private val EXCEPTION_BACKOFF = 1.minutes
 
-internal fun MessageConsumer.asStage(): ConsumerStage =
-    when (this) {
+internal fun Flow<List<Message<String>>>.applyConsumer(consumer: MessageConsumer) =
+    when (consumer) {
         is MessageConsumer.Individual ->
-            FlowStage { upstream ->
-                upstream
-                    .flatMapMerge(configuration.parallelism, List<Message<String>>::asFlow)
-                    .map(::handleSafely)
-                    .chunked(SQS_BATCH_SIZE, CHUNK_TIMEOUT)
-            }
+            flatMapMerge(consumer.configuration.parallelism, List<Message<String>>::asFlow)
+                .map(consumer::handleSafely)
+                .chunked(SQS_BATCH_SIZE, CHUNK_TIMEOUT)
+
         is MessageConsumer.Batch ->
-            FlowStage { upstream ->
-                upstream.flatMapMerge(configuration.parallelism) { batch -> flow { emit(handleSafely(batch)) } }
-            }
+            flatMapMerge(consumer.configuration.parallelism) { batch -> flow { emit(consumer.handleSafely(batch)) } }
     }
 
 private suspend fun MessageConsumer.Individual.handleSafely(message: Message<String>) =
