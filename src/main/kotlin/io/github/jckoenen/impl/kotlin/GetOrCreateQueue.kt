@@ -1,0 +1,109 @@
+package io.github.jckoenen.impl.kotlin
+
+import arrow.core.Either
+import arrow.core.raise.either
+import aws.sdk.kotlin.services.sqs.SqsClient
+import aws.sdk.kotlin.services.sqs.createQueue
+import aws.sdk.kotlin.services.sqs.setQueueAttributes
+import com.fasterxml.jackson.databind.ObjectMapper
+import io.github.jckoenen.FifoQueueImpl
+import io.github.jckoenen.Queue
+import io.github.jckoenen.QueueImpl
+import io.github.jckoenen.SqsConnector
+import io.github.jckoenen.SqsFailure
+import io.github.jckoenen.impl.QueueArn
+import io.github.jckoenen.impl.RedrivePolicy
+
+internal suspend fun SqsClient.getOrCreateQueue(
+    json: ObjectMapper,
+    name: Queue.Name,
+    createDlq: Boolean,
+): Either<SqsFailure.CreateQueueFailure, Queue> = either {
+    val targetQueueUrl = doCreateQueue(json, name).bind()
+    val existingDlqUrl = getDlqUrl(json, targetQueueUrl).bind()
+
+    val finalDlqUrl =
+        when {
+            existingDlqUrl == null && !createDlq -> null
+            existingDlqUrl == null -> {
+                val created = doCreateQueue(json, dlqName(name)).bind()
+                attachDlq(targetQueueUrl, json, created).bind()
+                SqsConnector.logger
+                    .atInfo()
+                    .addKeyValue("queue.name", name.value)
+                    .addKeyValue("dlq.url", created.value)
+                    .log("Configured DLQ for existing queue")
+                created
+            }
+            createDlq -> existingDlqUrl
+            else -> {
+                SqsConnector.logger
+                    .atWarn()
+                    .addKeyValue("queue.name", name.value)
+                    .addKeyValue("dlq.url", existingDlqUrl.value)
+                    .log("Queue already exists with DLQ configured, will not delete DLQ")
+                existingDlqUrl
+            }
+        }
+
+    if (name.designatesFifo()) {
+        FifoQueueImpl(name, targetQueueUrl, finalDlqUrl)
+    } else {
+        QueueImpl(name, targetQueueUrl, finalDlqUrl)
+    }
+}
+
+private suspend fun SqsClient.attachDlq(
+    targetQueueUrl: Queue.Url,
+    json: ObjectMapper,
+    created: Queue.Url,
+) =
+    execute(unknownFailure("SQS.SetQueueAttributes", targetQueueUrl)) {
+        setQueueAttributes {
+            queueUrl = targetQueueUrl.value
+            attributes =
+                buildAttributes(
+                    json,
+                    redrivePolicy =
+                        RedrivePolicy(
+                            // TODO: config
+                            maxReceiveCount = 5,
+                            deadLetterTargetArn = QueueArn.fromUrl(created).toString(),
+                        ),
+                )
+        }
+    }
+
+private suspend fun SqsClient.doCreateQueue(
+    json: ObjectMapper,
+    name: Queue.Name,
+) = either {
+    val url =
+        execute(unknownFailure("SQS.CreateQueue", name)) {
+                val q = createQueue {
+                    queueName = name.value
+                    attributes =
+                        buildAttributes(
+                            json,
+                            isFifo = name.designatesFifo(),
+                        )
+                }
+                requireNotNull(q.queueUrl) { "Call did not return a url" }
+            }
+            .bind()
+
+    SqsConnector.logger
+        .atInfo()
+        .addKeyValue("queue.name", name.value)
+        .addKeyValue("queue.url", url)
+        .log("Possibly created new queue")
+
+    Queue.Url(url)
+}
+
+private fun dlqName(source: Queue.Name) =
+    if (source.designatesFifo()) {
+        Queue.Name(source.value.replace(FIFO_SUFFIX, "_dlq$FIFO_SUFFIX"))
+    } else {
+        Queue.Name(source.value + "_dlq")
+    }
