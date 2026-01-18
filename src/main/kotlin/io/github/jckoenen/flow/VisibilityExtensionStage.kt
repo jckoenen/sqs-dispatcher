@@ -12,6 +12,7 @@ import io.github.jckoenen.utils.asTags
 import io.github.jckoenen.utils.id
 import io.github.jckoenen.utils.putAll
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -50,11 +51,11 @@ private class VisibilityManager(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val activeBatches = BatchMap<Message.ReceiptHandle>()
+    private val interval = maxOf(500.milliseconds, extensionDuration - extensionThreshold)
 
     suspend fun startTracking(messages: List<MessageBound>, parentScope: CoroutineScope) {
         messages.groupBy(MessageBound::queue).forEach { (queue, byQueue) ->
             val ref = activeBatches.register(byQueue.map(MessageBound::receiptHandle))
-            val interval = extensionDuration - extensionThreshold
             parentScope.schedule(interval, queue, ref)
 
             logger

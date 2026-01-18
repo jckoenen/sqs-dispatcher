@@ -36,8 +36,21 @@ fun SqsConnector.consume(
     queue: Queue,
     consumer: MessageConsumer,
     visibilityTimeout: Duration = 30.seconds,
+    automaticVisibilityExtension: Duration? = visibilityTimeout,
 ): DrainableFlow<Nothing> = drainable {
-    val stage = consumer.asStage().compose(VisibilityExtensionStage(this@consume, visibilityTimeout))
+    check(visibilityTimeout.isFinite() && visibilityTimeout.isPositive()) {
+        "visibilityTimeout must be finite and positive, got $visibilityTimeout"
+    }
+
+    val stage =
+        if (automaticVisibilityExtension != null) {
+            check(automaticVisibilityExtension.isFinite() && automaticVisibilityExtension.isPositive()) {
+                "automaticVisibilityExtension must be finite and positive, got $automaticVisibilityExtension"
+            }
+            consumer.asStage().compose(VisibilityExtensionStage(this@consume, automaticVisibilityExtension))
+        } else {
+            consumer.asStage()
+        }
 
     consumeImpl(queue, stage, receive(queue, visibilityTimeout)).collect(::emit)
 }
@@ -46,10 +59,11 @@ fun SqsConnector.consume(
     queueName: Queue.Name,
     consumer: MessageConsumer,
     visibilityTimeout: Duration = 30.seconds,
+    automaticVisibilityExtension: Duration? = visibilityTimeout,
 ): DrainableFlow<Nothing> = drainable {
     val q = resolveQueue(queueName)
 
-    consume(q, consumer, visibilityTimeout).collect(::emit)
+    consume(q, consumer, visibilityTimeout, automaticVisibilityExtension).collect(::emit)
 }
 
 @Suppress("UNCHECKED_CAST")
