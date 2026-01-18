@@ -1,5 +1,7 @@
 package io.github.jckoenen.impl.kotlin
 
+import arrow.core.PotentiallyUnsafeNonEmptyOperation
+import arrow.core.wrapAsNonEmptyListOrThrow
 import io.github.jckoenen.OutboundMessage
 import io.github.jckoenen.testinfra.SqsContainerExtension
 import io.github.jckoenen.testinfra.SqsContainerExtension.queueName
@@ -14,11 +16,13 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.toList
 
+@OptIn(PotentiallyUnsafeNonEmptyOperation::class)
 class KotlinSqsConnectorTest : FreeSpec({
     "The kotlin implementation" - {
         val subject = SqsContainerExtension.newConnector()
@@ -32,6 +36,7 @@ class KotlinSqsConnectorTest : FreeSpec({
                     .take(count)
                     .map { it.value }
                     .toList()
+                    .wrapAsNonEmptyListOrThrow()
 
             subject.sendMessages(queue.url, expected.map(::OutboundMessage))
                 .assumeRight()
@@ -41,6 +46,7 @@ class KotlinSqsConnectorTest : FreeSpec({
                     .buffer()
                     .map { it.assumeRight() }
                     .takeWhile { it.isNotEmpty() }
+                    .mapNotNull { it.wrapAsNonEmptyListOrThrow() }
                     .onEach { batch ->
                         subject.deleteMessages(queue.url, batch.map { it.receiptHandle })
                             .assumeRight()

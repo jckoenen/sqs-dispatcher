@@ -1,6 +1,7 @@
 package io.github.jckoenen.impl.kotlin
 
 import arrow.core.Nel
+import arrow.core.NonEmptyCollection
 import arrow.core.leftIor
 import arrow.core.toNonEmptyListOrNull
 import arrow.core.unzip
@@ -21,7 +22,7 @@ internal const val CHANGE_OPERATION = "SQS.ChangeMessageVisibilities"
 
 internal suspend fun SqsClient.extendMessageVisibility(
     queueUrl: Queue.Url,
-    messages: Collection<Message.ReceiptHandle>,
+    messages: NonEmptyCollection<Message.ReceiptHandle>,
     duration: Duration,
 ): BatchResult<ChangeMessagesFailure, Message.ReceiptHandle> =
     messages
@@ -37,7 +38,7 @@ internal suspend fun SqsClient.extendMessageVisibility(
 
             doChange(queueUrl, batch, inChunk)
         }
-        .combine()
+        .reduce()
 
 private suspend fun SqsClient.doChange(
     queueUrl: Queue.Url,

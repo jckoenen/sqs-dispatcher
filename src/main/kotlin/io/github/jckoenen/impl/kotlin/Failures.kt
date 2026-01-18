@@ -8,7 +8,6 @@ import arrow.core.left
 import arrow.core.raise.Raise
 import arrow.core.recover
 import arrow.core.right
-import arrow.core.rightIor
 import arrow.core.separateEither
 import arrow.core.toNonEmptyListOrNull
 import aws.sdk.kotlin.services.sqs.model.BatchResultErrorEntry
@@ -29,7 +28,7 @@ import io.github.jckoenen.SqsConnector
 import io.github.jckoenen.SqsFailure
 import io.github.jckoenen.utils.QueueId
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.fold
+import kotlinx.coroutines.flow.reduce
 
 internal inline fun <E, T> execute(catch: Raise<E>.(SdkBaseException) -> T, call: () -> T) =
     Either.catchOrThrow<SdkBaseException, _>(call).recover(catch)
@@ -76,10 +75,9 @@ private fun failureImpl(
     raise(SqsFailure.UnknownFailure(operation, QueueId.fromNullables(url, name)!!, it))
 }
 
-internal fun <L, R : Any> emptyResult(): BatchResult<L, R> = emptyList<R>().rightIor()
-
-internal suspend fun <L, R : Any> Flow<BatchResult<L, R>>.combine(): BatchResult<L, R> =
-    fold(emptyResult()) { acc, value -> acc.combine(value, { a, v -> a + v }, { a, v -> a + v }) }
+internal suspend fun <L, R : Any> Flow<BatchResult<L, R>>.reduce(): BatchResult<L, R> = reduce { r1, r2 ->
+    r1.combine(r2, { a, v -> a + v }, { a, v -> a + v })
+}
 
 internal fun <T : Any> splitFailureAndSuccess(
     operation: String,

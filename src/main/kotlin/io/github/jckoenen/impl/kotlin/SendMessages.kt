@@ -1,6 +1,7 @@
 package io.github.jckoenen.impl.kotlin
 
 import arrow.core.Nel
+import arrow.core.NonEmptyCollection
 import arrow.core.leftIor
 import arrow.core.unzip
 import aws.sdk.kotlin.services.sqs.SqsClient
@@ -17,7 +18,7 @@ internal const val SEND_OPERATION = "SQS.SendMessages"
 
 internal suspend fun SqsClient.sendMessages(
     queueUrl: Queue.Url,
-    messages: Collection<OutboundMessage>,
+    messages: NonEmptyCollection<OutboundMessage>,
 ): BatchResult<SendMessagesFailure, OutboundMessage> =
     messages
         .chunkForBatching { i, msg ->
@@ -34,7 +35,7 @@ internal suspend fun SqsClient.sendMessages(
 
             doSend(queueUrl, batch, inChunk)
         }
-        .combine()
+        .reduce()
 
 private suspend fun SqsClient.doSend(
     queueUrl: Queue.Url,

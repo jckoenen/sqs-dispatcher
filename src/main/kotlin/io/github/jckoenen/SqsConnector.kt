@@ -3,6 +3,7 @@ package io.github.jckoenen
 import arrow.core.Either
 import arrow.core.Ior
 import arrow.core.Nel
+import arrow.core.NonEmptyCollection
 import aws.sdk.kotlin.services.sqs.SqsClient
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.github.jckoenen.SqsFailure.ChangeMessagesFailure
@@ -23,7 +24,7 @@ import org.slf4j.LoggerFactory
  * @param L the underlying failure type. Entries with the same failure will be grouped together
  * @param R the input/output type of the batch operation. Will be the same instances as passed in
  */
-typealias BatchResult<L, R> = Ior<FailuresWithCause<L, R>, List<R>>
+typealias BatchResult<L, R> = Ior<FailuresWithCause<L, R>, Nel<R>>
 
 typealias FailuresWithCause<L, R> = Map<out L, Nel<SqsConnector.FailedBatchEntry<R>>>
 
@@ -57,17 +58,17 @@ interface SqsConnector {
 
     suspend fun sendMessages(
         queueUrl: Queue.Url,
-        messages: Collection<OutboundMessage>,
+        messages: NonEmptyCollection<OutboundMessage>,
     ): BatchResult<SendMessagesFailure, OutboundMessage>
 
     suspend fun deleteMessages(
         queueUrl: Queue.Url,
-        messages: Collection<Message.ReceiptHandle>,
+        messages: NonEmptyCollection<Message.ReceiptHandle>,
     ): BatchResult<DeleteMessagesFailure, Message.ReceiptHandle>
 
     suspend fun extendMessageVisibility(
         queueUrl: Queue.Url,
-        messages: Collection<Message.ReceiptHandle>,
+        messages: NonEmptyCollection<Message.ReceiptHandle>,
         duration: Duration,
     ): BatchResult<ChangeMessagesFailure, Message.ReceiptHandle>
 }
