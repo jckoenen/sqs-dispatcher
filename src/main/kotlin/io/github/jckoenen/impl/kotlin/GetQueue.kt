@@ -25,10 +25,18 @@ internal suspend fun SqsClient.getQueue(
 
     val dlqUrl = getDlqUrl(json, url).bind()
 
+    // TODO unify
+    val dlq =
+        when {
+            dlqUrl == null -> null
+            name.designatesFifo() -> FifoQueueImpl(Queue.Name("dlq-${name.value}"), dlqUrl, null)
+            else -> QueueImpl(Queue.Name("dlq-${name.value}"), dlqUrl, null)
+        }
+
     if (name.designatesFifo()) {
-        FifoQueueImpl(name, url, dlqUrl)
+        FifoQueueImpl(name, url, dlq)
     } else {
-        QueueImpl(name, url, dlqUrl)
+        QueueImpl(name, url, dlq)
     }
 }
 

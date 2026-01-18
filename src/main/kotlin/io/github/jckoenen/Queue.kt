@@ -7,7 +7,7 @@ sealed interface Queue {
 
     val name: Name
     val url: Url
-    val dlqUrl: Url?
+    val dlq: Queue?
 
     sealed interface Fifo : Queue
 }
@@ -15,11 +15,11 @@ sealed interface Queue {
 internal data class QueueImpl(
     override val name: Queue.Name,
     override val url: Queue.Url,
-    override val dlqUrl: Queue.Url?,
+    override val dlq: Queue?,
 ) : Queue
 
 internal data class FifoQueueImpl(
     override val name: Queue.Name,
     override val url: Queue.Url,
-    override val dlqUrl: Queue.Url?,
+    override val dlq: Queue?,
 ) : Queue.Fifo

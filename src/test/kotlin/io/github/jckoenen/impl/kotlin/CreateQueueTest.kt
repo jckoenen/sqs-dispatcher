@@ -23,7 +23,7 @@ class CreateQueueTest : FreeSpec({
                 val expect = queueName()
 
                 subject.getOrCreateQueue(expect, createDlq = false) shouldBe right<Queue> {
-                    dlqUrl should beNull()
+                    dlq should beNull()
                     name shouldBe expect
                 }
             }
@@ -31,7 +31,7 @@ class CreateQueueTest : FreeSpec({
                 val expect = queueName()
 
                 subject.getOrCreateQueue(queueName(), createDlq = true) shouldBe right<Queue> {
-                    dlqUrl shouldNot beNull()
+                    dlq shouldNot beNull()
                     name shouldBe expect
                 }
             }
@@ -43,7 +43,7 @@ class CreateQueueTest : FreeSpec({
                 subject.getOrCreateQueue(existing.name, createDlq = true) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldBe existing.url
-                    dlqUrl shouldDenoteSameQueueAs existing.dlqUrl
+                    dlq?.url shouldDenoteSameQueueAs existing.dlq?.url
                 }
             }
             "with existing dlq even though createdDlq = false" {
@@ -52,7 +52,7 @@ class CreateQueueTest : FreeSpec({
                 subject.getOrCreateQueue(existing.name, createDlq = false) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldBe existing.url
-                    dlqUrl shouldDenoteSameQueueAs existing.dlqUrl
+                    dlq?.url shouldDenoteSameQueueAs existing.dlq?.url
                 }
 
             }
@@ -62,7 +62,7 @@ class CreateQueueTest : FreeSpec({
                 subject.getOrCreateQueue(existing.name, createDlq = true) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldBe existing.url
-                    dlqUrl.shouldNotBeNull()
+                    dlq.shouldNotBeNull()
                 }
             }
             "without existing dlq" {

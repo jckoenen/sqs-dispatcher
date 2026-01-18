@@ -27,7 +27,7 @@ class GetQueueTest: FreeSpec({
                 subject.getQueue(existing.name) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldDenoteSameQueueAs existing.url
-                    dlqUrl shouldDenoteSameQueueAs existing.dlqUrl
+                    dlq?.url shouldDenoteSameQueueAs existing.dlq?.url
                 }
             }
             "without dlq" {
@@ -36,7 +36,7 @@ class GetQueueTest: FreeSpec({
                 subject.getQueue(existing.name) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldDenoteSameQueueAs existing.url
-                    dlqUrl.shouldBeNull()
+                    dlq.shouldBeNull()
                 }
             }
         }
@@ -47,7 +47,7 @@ class GetQueueTest: FreeSpec({
                 subject.getQueue(existing.name) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldDenoteSameQueueAs existing.url
-                    dlqUrl shouldDenoteSameQueueAs existing.dlqUrl
+                    dlq?.url shouldDenoteSameQueueAs existing.dlq?.url
                 }
             }
             "without dlq" {
@@ -56,7 +56,7 @@ class GetQueueTest: FreeSpec({
                 subject.getQueue(existing.name) shouldBe right<Queue> {
                     name shouldBe existing.name
                     url shouldDenoteSameQueueAs existing.url
-                    dlqUrl.shouldBeNull()
+                    dlq.shouldBeNull()
                 }
             }
         }
