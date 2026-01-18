@@ -18,8 +18,8 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 
@@ -35,18 +35,23 @@ import kotlinx.coroutines.flow.onEach
 fun SqsConnector.receive(
     queue: Queue,
     visibilityTimeout: Duration = 30.seconds,
-): DrainableFlow<Nel<Message<String>>> =
-    drainSource()
-        .map {
-            retryIndefinitely(1.seconds, 1.minutes) {
-                receiveMessages(queue, visibilityTimeout = visibilityTimeout)
-                    .warnOnLeft("Failed to poll messages. Retrying…")
-            }
+): DrainableFlow<Nel<Message<String>>> {
+    val messagesFlow = flow {
+        while (true) {
+            val messages =
+                retryIndefinitely(1.seconds, 1.minutes) {
+                    receiveMessages(queue, visibilityTimeout = visibilityTimeout)
+                        .warnOnLeft("Failed to poll messages. Retrying…")
+                }
+            emit(messages)
         }
+    }
+    return messagesFlow
         .onEach { if (it.isEmpty()) SqsConnector.logger.debug("No messages received") }
         .mapNotNull { it.toNonEmptyListOrNull() }
         .flowOn(mdc(queue.id().asTags()))
         .drainable()
+}
 
 /**
  * Receives messages from an SQS queue as a drainable flow, allowing for continuous or controlled consumption of
