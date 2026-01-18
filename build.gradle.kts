@@ -10,7 +10,7 @@ plugins {
     application
 }
 
-group = "de.joekoe"
+group = "io.github.jckoenen"
 
 version = "1.0-SNAPSHOT"
 
