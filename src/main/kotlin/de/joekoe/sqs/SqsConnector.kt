@@ -3,12 +3,15 @@ package de.joekoe.sqs
 import arrow.core.Either
 import arrow.core.Ior
 import arrow.core.Nel
+import aws.sdk.kotlin.services.sqs.SqsClient
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import de.joekoe.sqs.SqsFailure.ChangeMessagesFailure
 import de.joekoe.sqs.SqsFailure.CreateQueueFailure
 import de.joekoe.sqs.SqsFailure.DeleteMessagesFailure
 import de.joekoe.sqs.SqsFailure.GetQueueFailure
 import de.joekoe.sqs.SqsFailure.ReceiveMessagesFailure
 import de.joekoe.sqs.SqsFailure.SendMessagesFailure
+import de.joekoe.sqs.impl.kotlin.KotlinSqsConnector
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import org.slf4j.LoggerFactory
@@ -35,6 +38,8 @@ interface SqsConnector {
 
     companion object {
         internal val logger = LoggerFactory.getLogger(SqsConnector::class.java)
+
+        operator fun invoke(client: SqsClient): SqsConnector = KotlinSqsConnector(client, jacksonObjectMapper())
     }
 
     suspend fun getQueue(name: Queue.Name): Either<GetQueueFailure, Queue>
