@@ -14,6 +14,7 @@ sealed interface Message<out T : Any> : MessageBound {
 
         @JvmInline value class DeduplicationId(val value: String)
 
+        // TODO: Non Fifo messages can have groupIds now
         val groupId: GroupId
         val deduplicationId: DeduplicationId
     }
