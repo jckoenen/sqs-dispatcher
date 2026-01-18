@@ -1,5 +1,9 @@
 package io.github.jckoenen.impl.kotlin
 
+import arrow.core.PotentiallyUnsafeNonEmptyOperation
+import arrow.core.nonEmptyListOf
+import arrow.core.toNonEmptyListOrThrow
+import arrow.core.wrapAsNonEmptyListOrThrow
 import io.github.jckoenen.OutboundMessage
 import io.github.jckoenen.SqsFailure.ChangeMessagesFailure.MessageAlreadyDeleted
 import io.github.jckoenen.testinfra.SqsContainerExtension
@@ -17,6 +21,7 @@ import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlin.time.Duration.Companion.seconds
 
+@OptIn(PotentiallyUnsafeNonEmptyOperation::class)
 class ExtendMessageVisibilityTest : FreeSpec({
     "Extending Message Visibility" - {
         val connector = SqsContainerExtension.newConnector()
@@ -25,12 +30,13 @@ class ExtendMessageVisibilityTest : FreeSpec({
             val queue = connector.getOrCreateQueue(queueName()).assumeRight()
             val outbound = OutboundMessage("hello, world")
 
-            connector.sendMessages(queue.url, listOf(outbound)).assumeRight()
+            connector.sendMessages(queue.url, nonEmptyListOf(outbound)).assumeRight()
             val received = flow { while (true) emit(connector.receiveMessages(queue)) }
                 .flatMapConcat { it.assumeRight().asFlow() }
                 .take(1)
                 .map { it.receiptHandle }
                 .toList()
+                .wrapAsNonEmptyListOrThrow()
 
             connector.deleteMessages(queue.url, received).assumeRight()
             val failures = connector.extendMessageVisibility(queue.url, received, 5.seconds)

@@ -1,7 +1,9 @@
 package io.github.jckoenen.flow
 
 import arrow.core.Nel
+import arrow.core.PotentiallyUnsafeNonEmptyOperation
 import arrow.core.leftIor
+import arrow.core.wrapAsNonEmptyListOrThrow
 import io.github.jckoenen.BatchResult
 import io.github.jckoenen.Failure
 import io.github.jckoenen.Message
@@ -16,7 +18,7 @@ import io.github.jckoenen.SqsFailure
 import io.github.jckoenen.allTags
 import io.github.jckoenen.impl.kotlin.SEND_OPERATION
 import io.github.jckoenen.impl.kotlin.batchCallFailed
-import io.github.jckoenen.impl.kotlin.combine
+import io.github.jckoenen.impl.kotlin.reduce
 import io.github.jckoenen.utils.TypedMap.Companion.byType
 import io.github.jckoenen.utils.id
 import io.github.jckoenen.utils.putAll
@@ -89,15 +91,17 @@ private suspend fun SqsConnector.moveToDlq(
     }
 }
 
+@OptIn(PotentiallyUnsafeNonEmptyOperation::class)
 private suspend fun SqsConnector.backoff(toSend: Nel<RetryBackoff>, queue: Queue) =
     toSend
         .groupBy(RetryBackoff::backoffDuration, RetryBackoff::receiptHandle)
+        .mapValues { (_, handles) -> handles.wrapAsNonEmptyListOrThrow() } // groupBy guarantees being non-empty
         .entries
         .asFlow()
         .map { (duration, handles) -> extendMessageVisibility(queue.url, handles, duration) }
-        .combine()
+        .reduce()
 
-private suspend fun SqsConnector.delete(toDelete: List<DeleteMessage>, queue: Queue) =
+private suspend fun SqsConnector.delete(toDelete: Nel<DeleteMessage>, queue: Queue) =
     deleteMessages(queue.url, toDelete.map(DeleteMessage::receiptHandle))
 
 private fun logOutcome(batchResult: BatchResult<Failure, *>) {

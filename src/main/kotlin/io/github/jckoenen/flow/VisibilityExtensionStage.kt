@@ -1,6 +1,7 @@
 package io.github.jckoenen.flow
 
 import arrow.core.identity
+import arrow.core.toNonEmptySetOrNull
 import io.github.jckoenen.Message
 import io.github.jckoenen.MessageBound
 import io.github.jckoenen.Queue
@@ -86,9 +87,9 @@ private class VisibilityManager(
             logger
                 .atDebug()
                 .addKeyValue("visibilityBatch.id", reference.identityCode())
-                .addKeyValue("visibilityBatch.size", messages.size)
+                .addKeyValue("visibilityBatch.size", messages?.size ?: 0)
 
-        if (messages.isEmpty()) {
+        if (messages == null) {
             log.log("No messages left to extend visibility")
             return@launch
         }
@@ -152,7 +153,7 @@ private class VisibilityManager(
         data class BatchRef<T>(private val items: MutableSet<T>, private val mutex: Mutex) {
             private val empty = MutableStateFlow(false)
 
-            suspend fun items() = mutex.withLock(action = items::toSet)
+            suspend fun items() = mutex.withLock(action = items::toNonEmptySetOrNull)
 
             fun remove(item: T) {
                 if (items.remove(item) && items.isEmpty()) {

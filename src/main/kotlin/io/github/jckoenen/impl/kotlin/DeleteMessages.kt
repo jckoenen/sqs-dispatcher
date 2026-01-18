@@ -1,6 +1,7 @@
 package io.github.jckoenen.impl.kotlin
 
 import arrow.core.Nel
+import arrow.core.NonEmptyCollection
 import arrow.core.leftIor
 import arrow.core.unzip
 import aws.sdk.kotlin.services.sqs.SqsClient
@@ -16,7 +17,7 @@ private const val DELETE_OPERATION = "SQS.DeleteMessages"
 
 internal suspend fun SqsClient.deleteMessages(
     queueUrl: Queue.Url,
-    handles: Collection<Message.ReceiptHandle>,
+    handles: NonEmptyCollection<Message.ReceiptHandle>,
 ): BatchResult<DeleteMessagesFailure, Message.ReceiptHandle> =
     handles
         .chunkForBatching { i, handle ->
@@ -29,7 +30,7 @@ internal suspend fun SqsClient.deleteMessages(
             val (inChunk, requestEntries) = chunk.unzip()
             doDelete(queueUrl, requestEntries, inChunk)
         }
-        .combine()
+        .reduce()
 
 private suspend fun SqsClient.doDelete(
     queueUrl: Queue.Url,

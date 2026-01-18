@@ -1,6 +1,7 @@
 package io.github.jckoenen.impl.kotlin
 
 import arrow.core.Either
+import arrow.core.NonEmptyCollection
 import aws.sdk.kotlin.services.sqs.SqsClient
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.jckoenen.BatchResult
@@ -34,17 +35,17 @@ internal class KotlinSqsConnector(
 
     override suspend fun sendMessages(
         queueUrl: Queue.Url,
-        messages: Collection<OutboundMessage>,
+        messages: NonEmptyCollection<OutboundMessage>,
     ): BatchResult<SqsFailure.SendMessagesFailure, OutboundMessage> = sqsClient.sendMessages(queueUrl, messages)
 
     override suspend fun deleteMessages(
         queueUrl: Queue.Url,
-        messages: Collection<Message.ReceiptHandle>,
+        messages: NonEmptyCollection<Message.ReceiptHandle>,
     ): BatchResult<DeleteMessagesFailure, Message.ReceiptHandle> = sqsClient.deleteMessages(queueUrl, messages)
 
     override suspend fun extendMessageVisibility(
         queueUrl: Queue.Url,
-        messages: Collection<Message.ReceiptHandle>,
+        messages: NonEmptyCollection<Message.ReceiptHandle>,
         duration: Duration,
     ): BatchResult<ChangeMessagesFailure, Message.ReceiptHandle> =
         sqsClient.extendMessageVisibility(queueUrl, messages, duration)
