@@ -1,7 +1,8 @@
 package io.github.jckoenen.utils
 
 import arrow.core.Nel
-import arrow.core.toNonEmptyListOrNull
+import arrow.core.PotentiallyUnsafeNonEmptyOperation
+import arrow.core.wrapAsNonEmptyListOrThrow
 import kotlin.experimental.ExperimentalTypeInference
 import kotlin.reflect.KClass
 
@@ -11,8 +12,8 @@ private typealias ClassMap<T> = Map<KClass<out T>, List<T>>
 internal value class TypedMap<T : Any> private constructor(private val underlying: ClassMap<T>) :
     ClassMap<T> by underlying {
 
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified K : T> get(): Nel<K>? = underlying[K::class]?.toNonEmptyListOrNull() as? Nel<K>
+    @OptIn(PotentiallyUnsafeNonEmptyOperation::class)
+    inline fun <reified K : T> get(): Nel<K>? = underlying[K::class]?.filterIsInstance<K>()?.wrapAsNonEmptyListOrThrow()
 
     @OptIn(ExperimentalTypeInference::class)
     @BuilderInference

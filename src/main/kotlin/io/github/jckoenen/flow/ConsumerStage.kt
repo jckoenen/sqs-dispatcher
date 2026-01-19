@@ -8,23 +8,22 @@ import io.github.jckoenen.MessageConsumer.Action.RetryBackoff
 import io.github.jckoenen.SqsConnector
 import io.github.jckoenen.impl.kotlin.SQS_BATCH_SIZE
 import io.github.jckoenen.utils.chunked
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
-private val CHUNK_TIMEOUT = 30.seconds
 private val EXCEPTION_BACKOFF = 1.minutes
 
-internal fun Flow<List<Message<String>>>.applyConsumer(consumer: MessageConsumer) =
+internal fun Flow<List<Message<String>>>.applyConsumer(consumer: MessageConsumer, chunkWindow: Duration) =
     when (consumer) {
         is MessageConsumer.Individual ->
             flatMapMerge(consumer.configuration.parallelism, List<Message<String>>::asFlow)
                 .map(consumer::handleSafely)
-                .chunked(SQS_BATCH_SIZE, CHUNK_TIMEOUT)
+                .chunked(SQS_BATCH_SIZE, chunkWindow)
 
         is MessageConsumer.Batch ->
             flatMapMerge(consumer.configuration.parallelism) { batch -> flow { emit(consumer.handleSafely(batch)) } }
