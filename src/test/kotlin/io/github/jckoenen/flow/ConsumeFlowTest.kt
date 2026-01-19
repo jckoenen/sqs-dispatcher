@@ -13,13 +13,12 @@ import io.github.jckoenen.testinfra.assumeRight
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.property.Arb
-import io.kotest.property.RandomSource
-import io.kotest.property.arbitrary.string
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.job
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(PotentiallyUnsafeNonEmptyOperation::class)
@@ -27,7 +26,7 @@ class ConsumeFlowTest: FreeSpec ({
     "Using SqsConnector.consume" - {
         val connector = SqsContainerExtension.newConnector()
         val messageCount = 25
-        val minimumVisibilityTimeout = 3.seconds
+        val minimumVisibilityTimeout = 1.seconds
 
         "messages moved to dlq should not be received again" {
             val queue = connector.getOrCreateQueue(queueName(), createDlq = true)
@@ -46,18 +45,13 @@ class ConsumeFlowTest: FreeSpec ({
 
             val dlqConsumer = TestMessageConsumer.create(handleFn = Action::DeleteMessage)
             val qConsumer = TestMessageConsumer.create(handleFn = Action::MoveMessageToDlq)
-            qConsumer.seen
-                .onEach { println("  Q Seen: ${it.map(Message<*>::content)}") }
-                .launchIn(this)
+            qConsumer.seen.launchIn(this)
+            dlqConsumer.seen.launchIn(this)
 
-            dlqConsumer.seen
-                .onEach { println("DLQ Seen: ${it.map(Message<*>::content)}") }
-                .launchIn(this)
-
-            connector.consume(queue, qConsumer, visibilityTimeout = minimumVisibilityTimeout, automaticVisibilityExtension = null)
+            connector.consume(queue, qConsumer, visibilityTimeout = minimumVisibilityTimeout)
                 .launchWithDrainControl(this)
 
-            connector.consume(dlq, dlqConsumer, visibilityTimeout = minimumVisibilityTimeout, automaticVisibilityExtension = null)
+            connector.consume(dlq, dlqConsumer, visibilityTimeout = minimumVisibilityTimeout)
                 .launchWithDrainControl(this)
 
             eventually {
@@ -65,11 +59,11 @@ class ConsumeFlowTest: FreeSpec ({
                 inDlq shouldContainExactlyInAnyOrder expected
             }
 
-            delay(minimumVisibilityTimeout * 3)
+            delay(minimumVisibilityTimeout * 2)
             val seenInQueue = qConsumer.seen.value.map(Message<String>::content)
             seenInQueue shouldContainExactlyInAnyOrder expected
 
-            cancel("Test complete")
+            currentCoroutineContext().job.cancelChildren()
         }
     }
 }
