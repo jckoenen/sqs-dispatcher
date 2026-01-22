@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName
 internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListener {
     private val NON_WORD_CHARS = """\W""".toRegex()
     private val container =
-        DockerImageName.parse("localstack/localstack:4.7").let(::LocalStackContainer).withServices("sqs")
+        DockerImageName.parse("localstack/localstack:4.12").let(::LocalStackContainer).withServices("sqs")
 
     private val scope =
         CoroutineScope(

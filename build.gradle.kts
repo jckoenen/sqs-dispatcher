@@ -2,7 +2,6 @@ import com.diffplug.gradle.spotless.BaseKotlinExtension
 import com.diffplug.spotless.kotlin.KtfmtStep
 import com.github.benmanes.gradle.versions.updates.gradle.GradleReleaseChannel
 import org.gradle.api.tasks.testing.logging.TestLogEvent
-import org.gradle.kotlin.dsl.signing
 
 plugins {
     alias(libs.plugins.kotlin.jvm)

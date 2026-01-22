@@ -24,7 +24,13 @@ internal suspend fun SqsClient.sendMessages(
         .chunkForBatching { i, msg ->
             SendMessageBatchRequestEntry {
                 id = i.toString()
-                messageAttributes = msg.attributes.mapValues { (_, v) -> MessageAttributeValue { stringValue = v } }
+                messageAttributes =
+                    msg.attributes.mapValues { (_, v) ->
+                        MessageAttributeValue {
+                            dataType = "String"
+                            stringValue = v
+                        }
+                    }
                 messageBody = msg.content
                 messageDeduplicationId = msg.fifo?.deduplicationId?.value
                 messageGroupId = msg.fifo?.groupId?.value
