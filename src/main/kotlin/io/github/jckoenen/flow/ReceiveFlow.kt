@@ -8,9 +8,6 @@ import io.github.jckoenen.Message
 import io.github.jckoenen.Queue
 import io.github.jckoenen.SqsConnector
 import io.github.jckoenen.allTags
-import io.github.jckoenen.utils.asTags
-import io.github.jckoenen.utils.id
-import io.github.jckoenen.utils.mdc
 import io.github.jckoenen.utils.putAll
 import io.github.jckoenen.utils.resolveQueue
 import io.github.jckoenen.utils.retryIndefinitely
@@ -19,7 +16,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 
@@ -49,7 +45,6 @@ fun SqsConnector.receive(
     return messagesFlow
         .onEach { if (it.isEmpty()) SqsConnector.logger.debug("No messages received") }
         .mapNotNull { it.toNonEmptyListOrNull() }
-        .flowOn(mdc(queue.id().asTags()))
         .drainable()
 }
 

@@ -5,4 +5,4 @@ interface Failure {
     val message: String
 }
 
-fun Failure.allTags() = customTags + mapOf("failure.kind" to (this::class.simpleName ?: "Unnamed failure"))
+fun Failure.allTags() = customTags + mapOf("sqs.failure.kind" to (this::class.simpleName ?: "Unnamed failure"))

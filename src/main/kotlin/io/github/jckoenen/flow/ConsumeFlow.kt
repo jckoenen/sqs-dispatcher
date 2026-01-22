@@ -3,10 +3,14 @@ package io.github.jckoenen.flow
 import io.github.jckoenen.MessageConsumer
 import io.github.jckoenen.Queue
 import io.github.jckoenen.SqsConnector
+import io.github.jckoenen.utils.asTags
+import io.github.jckoenen.utils.id
+import io.github.jckoenen.utils.mdc
 import io.github.jckoenen.utils.resolveQueue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onEach
 
 // These are just best guess
@@ -35,6 +39,7 @@ fun SqsConnector.consume(
         .applyConsumer(consumer, chunkWindow = visibilityTimeout * CHUNK_WINDOW_FACTOR)
         .onEach { applyMessageActions(it, queue) }
         .maybe { visibilityManager?.trackOutbound(it) }
+        .flowOn(mdc(queue.id().asTags()))
         .collect {}
 }
 

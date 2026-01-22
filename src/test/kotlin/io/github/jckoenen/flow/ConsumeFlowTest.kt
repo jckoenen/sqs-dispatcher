@@ -11,20 +11,22 @@ import io.github.jckoenen.testinfra.SqsContainerExtension.queueName
 import io.github.jckoenen.testinfra.TestMessageConsumer
 import io.github.jckoenen.testinfra.assumeRight
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldNotBeNull
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.job
+import org.slf4j.MDC
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(PotentiallyUnsafeNonEmptyOperation::class)
 class ConsumeFlowTest: FreeSpec ({
     "Using SqsConnector.consume" - {
         val connector = SqsContainerExtension.newConnector()
-        val messageCount = 25
         val visibilityTimeout = 3.seconds
 
         "messages moved to dlq should not be received again" {
@@ -34,7 +36,7 @@ class ConsumeFlowTest: FreeSpec ({
 
             val expected =
                 generateSequence(0, Int::inc)
-                    .take(messageCount)
+                    .take(25)
                     .map { it.toString() }
                     .toList()
                     .wrapAsNonEmptyListOrThrow()
@@ -61,6 +63,37 @@ class ConsumeFlowTest: FreeSpec ({
             delay(visibilityTimeout * 2)
             val seenInQueue = qConsumer.seen.value.map(Message<String>::content)
             seenInQueue shouldContainExactlyInAnyOrder expected
+
+            currentCoroutineContext().job.cancelChildren()
+        }
+
+        "should have MDC available in consumers" {
+            val queue = connector.getOrCreateQueue(queueName(), createDlq = true)
+                .assumeRight()
+
+                generateSequence(0, Int::inc)
+                    .take(2)
+                    .map { it.toString() }
+                    .map(::OutboundMessage)
+                    .toList()
+                    .wrapAsNonEmptyListOrThrow()
+                    .let { connector.sendMessages(queue.url, it)}
+                    .assumeRight()
+
+            val mdc = CompletableDeferred<Map<String, String>?>()
+
+            val consumer = TestMessageConsumer.create {
+                mdc.complete(MDC.getCopyOfContextMap())
+                Action.DeleteMessage(it)
+            }
+            connector.consume(queue, consumer).launchWithDrainControl(this)
+
+            with(mdc.await()) {
+                shouldNotBeNull()
+
+                keys shouldContain "sqs.queue.url"
+                keys shouldContain "sqs.queue.name"
+            }
 
             currentCoroutineContext().job.cancelChildren()
         }

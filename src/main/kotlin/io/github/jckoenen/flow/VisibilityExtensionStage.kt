@@ -87,8 +87,8 @@ internal class VisibilityManager(
         val log =
             logger
                 .atDebug()
-                .addKeyValue("visibilityBatch.id", reference.identityCode())
-                .addKeyValue("visibilityBatch.size", messages?.size ?: 0)
+                .addKeyValue("sqs.visibilityBatch.id", reference.identityCode())
+                .addKeyValue("sqs.visibilityBatch.size", messages?.size ?: 0)
 
         if (messages == null) {
             log.log("No messages left to extend visibility")
@@ -105,16 +105,16 @@ internal class VisibilityManager(
                 if (cause is MessageAlreadyDeleted) {
                     logger
                         .atDebug()
-                        .addKeyValue("failure.ref", failure.reference)
+                        .addKeyValue("sqs.failure.ref", failure.reference)
                         .log("Message was already deleted, ignoring")
                 } else {
                     logger
                         .atWarn()
                         .putAll(cause.allTags())
-                        .addKeyValue("failure.ref", failure.reference)
-                        .addKeyValue("failure.code", failure.code)
-                        .addKeyValue("failure.message", failure.errorMessage)
-                        .addKeyValue("failure.senderFault", failure.senderFault)
+                        .addKeyValue("sqs.failure.ref", failure.reference)
+                        .addKeyValue("sqs.failure.code", failure.code)
+                        .addKeyValue("sqs.failure.message", failure.errorMessage)
+                        .addKeyValue("sqs.failure.senderFault", failure.senderFault)
                         .log("Couldn't extend visibility for message. Will NOT retry")
                 }
             }
