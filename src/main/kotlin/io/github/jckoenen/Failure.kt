@@ -1,8 +1,8 @@
 package io.github.jckoenen
 
-interface Failure {
-    val customTags: Map<String, Any>
-    val message: String
+public interface Failure {
+    public val customTags: Map<String, Any>
+    public val message: String
 }
 
-fun Failure.allTags() = customTags + mapOf("sqs.failure.kind" to (this::class.simpleName ?: "Unnamed failure"))
+internal fun Failure.allTags() = customTags + mapOf("sqs.failure.kind" to (this::class.simpleName ?: "Unnamed failure"))

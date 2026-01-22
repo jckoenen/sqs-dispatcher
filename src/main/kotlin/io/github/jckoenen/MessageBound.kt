@@ -1,6 +1,6 @@
 package io.github.jckoenen
 
-interface MessageBound {
-    val queue: Queue
-    val receiptHandle: Message.ReceiptHandle
+public interface MessageBound {
+    public val queue: Queue
+    public val receiptHandle: Message.ReceiptHandle
 }

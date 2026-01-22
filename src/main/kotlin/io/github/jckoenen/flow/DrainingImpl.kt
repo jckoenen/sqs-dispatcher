@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 
-fun <T> Flow<T>.drainable(): DrainableFlow<T> =
+internal fun <T> Flow<T>.drainable(): DrainableFlow<T> =
     channelFlow {
             val upstream = onEach(::send).launchIn(this)
             val drain = currentCoroutineContext()[DrainControlElement]

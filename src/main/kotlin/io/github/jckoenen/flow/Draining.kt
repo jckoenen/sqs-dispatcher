@@ -11,10 +11,10 @@ import kotlinx.coroutines.flow.Flow
  * @property job A reference to the coroutine's [Job] that facilitates lifecycle management and structured concurrency
  *   for the draining operation.
  */
-sealed interface DrainControl {
-    val job: Job
+public sealed interface DrainControl {
+    public val job: Job
 
-    fun drain()
+    public fun drain()
 }
 
 /**
@@ -22,11 +22,11 @@ sealed interface DrainControl {
  * the flow is completely stopped. This allows for clean shutdown scenarios where no data is lost during the termination
  * process.
  */
-sealed interface DrainableFlow<T> : Flow<T> {
-    fun launchWithDrainControl(scope: CoroutineScope): DrainControl
+public sealed interface DrainableFlow<T> : Flow<T> {
+    public fun launchWithDrainControl(scope: CoroutineScope): DrainControl
 }
 
-suspend fun DrainControl.drainAndJoin() {
+public suspend fun DrainControl.drainAndJoin() {
     drain()
     job.join()
 }
