@@ -27,47 +27,37 @@ internal suspend fun SqsClient.receiveMessages(
                     waitTimeSeconds = receiveTimeout.inWholeSeconds.toInt()
                     queueUrl = queue.url.value
                     messageAttributeNames = listOf("*")
+                    messageSystemAttributeNames = MessageSystemAttributeName.values()
                     this.visibilityTimeout = visibilityTimeout.inWholeSeconds.toInt()
                 }
             }
             .bind()
 
     response.messages.orEmpty().map { message ->
+        val attributes = message.mergedAttributes()
+        val id = Message.Id(message.messageId!!)
+        val receiptHandle = Message.ReceiptHandle(message.receiptHandle!!)
+        val groupId = attributes[MessageSystemAttributeName.MessageGroupId]?.let(Message<*>::GroupId)
+        val dedupeId = attributes[MessageSystemAttributeName.MessageDeduplicationId]?.let(Message.Fifo::DeduplicationId)
+
         if (queue is Queue.Fifo) {
-            toFifoMessage(message, queue)
+            FifoMessageImpl(id, receiptHandle, attributes, message.body.orEmpty(), queue, groupId!!, dedupeId!!)
         } else {
-            toMessage(message, queue)
+            MessageImpl(id, receiptHandle, attributes, message.body.orEmpty(), queue, groupId)
         }
     }
 }
 
-private fun toMessage(message: SqsMessage, queue: Queue) =
-    MessageImpl(
-        id = Message.Id(message.messageId!!),
-        receiptHandle = Message.ReceiptHandle(message.receiptHandle!!),
-        attributes = message.stringAttributes(),
-        content = message.body.orEmpty(),
-        queue = queue,
-    )
+private operator fun Map<String, String>.get(attributeName: MessageSystemAttributeName) =
+    get(attributeName.value)?.takeUnless(String::isBlank)
 
-private fun toFifoMessage(message: SqsMessage, queue: Queue.Fifo): FifoMessageImpl<String> {
-    val attrs = message.stringAttributes()
-    return FifoMessageImpl(
-        id = Message.Id(message.messageId!!),
-        receiptHandle = Message.ReceiptHandle(message.receiptHandle!!),
-        attributes = attrs,
-        content = message.body.orEmpty(),
-        groupId = Message.Fifo.GroupId(attrs.getValue(MessageSystemAttributeName.MessageGroupId.value)),
-        deduplicationId =
-            Message.Fifo.DeduplicationId(attrs.getValue(MessageSystemAttributeName.MessageDeduplicationId.value)),
-        queue = queue,
-    )
+private fun SqsMessage.mergedAttributes(): Map<String, String> {
+    val custom =
+        messageAttributes
+            .orEmpty()
+            .filter { (_, v) -> v.dataType != "Binary" }
+            .mapNotNull { (k, v) -> v.stringValue?.takeUnless(String::isBlank)?.let { k to it } }
+    val system = attributes.orEmpty().mapNotNull { (k, v) -> v.takeUnless(String::isBlank)?.let { k.value to it } }
+
+    return (custom + system).toMap()
 }
-
-private fun SqsMessage.stringAttributes() =
-    messageAttributes
-        .orEmpty()
-        .asSequence()
-        .filter { (_, v) -> v.dataType != "Binary" }
-        .mapNotNull { (k, v) -> v.stringValue?.let { k to it } }
-        .toMap()

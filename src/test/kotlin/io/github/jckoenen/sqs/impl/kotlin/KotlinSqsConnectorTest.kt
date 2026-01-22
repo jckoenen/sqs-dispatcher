@@ -2,15 +2,13 @@ package io.github.jckoenen.sqs.impl.kotlin
 
 import arrow.core.PotentiallyUnsafeNonEmptyOperation
 import arrow.core.wrapAsNonEmptyListOrThrow
+import io.github.jckoenen.sqs.Message
 import io.github.jckoenen.sqs.OutboundMessage
 import io.github.jckoenen.sqs.testinfra.SqsContainerExtension
 import io.github.jckoenen.sqs.testinfra.SqsContainerExtension.queueName
 import io.github.jckoenen.sqs.testinfra.assumeRight
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
-import io.kotest.property.Arb
-import io.kotest.property.RandomSource
-import io.kotest.property.arbitrary.string
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flatMapConcat
@@ -31,14 +29,13 @@ class KotlinSqsConnectorTest : FreeSpec({
 
         "should produce and consume messages correctly" {
             val expected =
-                Arb.string(minSize = 1)
-                    .generate(RandomSource.default())
+                generateSequence(0, Int::inc)
                     .take(count)
-                    .map { it.value }
+                    .map { "$it" to  Message.GroupId((it % 3).toString())}
                     .toList()
                     .wrapAsNonEmptyListOrThrow()
 
-            subject.sendMessages(queue.url, expected.map(::OutboundMessage))
+            subject.sendMessages(queue.url, expected.map { (body, group) -> OutboundMessage(body, groupId = group) })
                 .assumeRight()
 
             val actual =
@@ -53,7 +50,7 @@ class KotlinSqsConnectorTest : FreeSpec({
                     }
                     .buffer()
                     .flatMapConcat { it.asFlow() }
-                    .map { it.content }
+                    .map { it.content to it.groupId }
                     .take(count) // skip the last long poll when the test found all items
                     .toList()
 

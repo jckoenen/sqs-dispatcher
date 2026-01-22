@@ -32,8 +32,8 @@ internal suspend fun SqsClient.sendMessages(
                         }
                     }
                 messageBody = msg.content
-                messageDeduplicationId = msg.fifo?.deduplicationId?.value
-                messageGroupId = msg.fifo?.groupId?.value
+                messageDeduplicationId = msg.deduplicationId?.value
+                messageGroupId = msg.groupId?.value
             }
         }
         .map { chunk ->
