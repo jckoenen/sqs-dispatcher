@@ -1,0 +1,74 @@
+package io.github.jckoenen.sqs
+
+import arrow.core.Either
+import arrow.core.Ior
+import arrow.core.Nel
+import arrow.core.NonEmptyCollection
+import aws.sdk.kotlin.services.sqs.SqsClient
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.github.jckoenen.sqs.SqsFailure.ChangeMessagesFailure
+import io.github.jckoenen.sqs.SqsFailure.CreateQueueFailure
+import io.github.jckoenen.sqs.SqsFailure.DeleteMessagesFailure
+import io.github.jckoenen.sqs.SqsFailure.GetQueueFailure
+import io.github.jckoenen.sqs.SqsFailure.ReceiveMessagesFailure
+import io.github.jckoenen.sqs.SqsFailure.SendMessagesFailure
+import io.github.jckoenen.sqs.impl.kotlin.KotlinSqsConnector
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import org.slf4j.LoggerFactory
+
+/**
+ * The outcome of a batch operation, containing failed entries and their causes on the left, successfully sent messages
+ * on the right.
+ *
+ * @param L the underlying failure type. Entries with the same failure will be grouped together
+ * @param R the input/output type of the batch operation. Will be the same instances as passed in
+ */
+public typealias BatchResult<L, R> = Ior<FailuresWithCause<L, R>, Nel<R>>
+
+public typealias FailuresWithCause<L, R> = Map<out L, Nel<SqsConnector.FailedBatchEntry<R>>>
+
+public interface SqsConnector {
+
+    public data class FailedBatchEntry<T : Any>(
+        val reference: T,
+        val code: String,
+        val errorMessage: String?,
+        val senderFault: Boolean?,
+    )
+
+    public companion object {
+        internal val logger = LoggerFactory.getLogger(SqsConnector::class.java)
+
+        public operator fun invoke(client: SqsClient): SqsConnector = KotlinSqsConnector(client, jacksonObjectMapper())
+    }
+
+    public suspend fun getQueue(name: Queue.Name): Either<GetQueueFailure, Queue>
+
+    public suspend fun getOrCreateQueue(
+        name: Queue.Name,
+        createDlq: Boolean = false,
+    ): Either<CreateQueueFailure, Queue>
+
+    public suspend fun receiveMessages(
+        queue: Queue,
+        receiveTimeout: Duration = 10.seconds,
+        visibilityTimeout: Duration = 30.seconds
+    ): Either<ReceiveMessagesFailure, List<Message<String>>>
+
+    public suspend fun sendMessages(
+        queueUrl: Queue.Url,
+        messages: NonEmptyCollection<OutboundMessage>,
+    ): BatchResult<SendMessagesFailure, OutboundMessage>
+
+    public suspend fun deleteMessages(
+        queueUrl: Queue.Url,
+        messages: NonEmptyCollection<Message.ReceiptHandle>,
+    ): BatchResult<DeleteMessagesFailure, Message.ReceiptHandle>
+
+    public suspend fun extendMessageVisibility(
+        queueUrl: Queue.Url,
+        messages: NonEmptyCollection<Message.ReceiptHandle>,
+        duration: Duration,
+    ): BatchResult<ChangeMessagesFailure, Message.ReceiptHandle>
+}
