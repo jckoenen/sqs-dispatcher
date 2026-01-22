@@ -17,7 +17,6 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.job
 import kotlin.time.Duration.Companion.seconds
 
@@ -26,7 +25,7 @@ class ConsumeFlowTest: FreeSpec ({
     "Using SqsConnector.consume" - {
         val connector = SqsContainerExtension.newConnector()
         val messageCount = 25
-        val minimumVisibilityTimeout = 1.seconds
+        val visibilityTimeout = 3.seconds
 
         "messages moved to dlq should not be received again" {
             val queue = connector.getOrCreateQueue(queueName(), createDlq = true)
@@ -48,10 +47,10 @@ class ConsumeFlowTest: FreeSpec ({
             qConsumer.seen.launchIn(this)
             dlqConsumer.seen.launchIn(this)
 
-            connector.consume(queue, qConsumer, visibilityTimeout = minimumVisibilityTimeout)
+            connector.consume(queue, qConsumer, visibilityTimeout = visibilityTimeout)
                 .launchWithDrainControl(this)
 
-            connector.consume(dlq, dlqConsumer, visibilityTimeout = minimumVisibilityTimeout)
+            connector.consume(dlq, dlqConsumer, visibilityTimeout = visibilityTimeout)
                 .launchWithDrainControl(this)
 
             eventually {
@@ -59,7 +58,7 @@ class ConsumeFlowTest: FreeSpec ({
                 inDlq shouldContainExactlyInAnyOrder expected
             }
 
-            delay(minimumVisibilityTimeout * 2)
+            delay(visibilityTimeout * 2)
             val seenInQueue = qConsumer.seen.value.map(Message<String>::content)
             seenInQueue shouldContainExactlyInAnyOrder expected
 

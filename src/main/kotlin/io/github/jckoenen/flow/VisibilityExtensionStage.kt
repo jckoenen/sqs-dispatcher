@@ -41,11 +41,17 @@ internal fun <T : MessageBound, C : Collection<T>> VisibilityManager.trackOutbou
 internal class VisibilityManager(
     private val connector: SqsConnector,
     private val extensionDuration: Duration,
-    private val extensionThreshold: Duration = 3.seconds,
+    extensionOffset: Duration = 3.seconds,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val activeBatches = BatchMap<Message.ReceiptHandle>()
-    private val interval = maxOf(500.milliseconds, extensionDuration - extensionThreshold)
+    private val interval = maxOf(500.milliseconds, extensionDuration - extensionOffset)
+
+    init {
+        check(interval < extensionDuration) {
+            "Extension interval $interval must be shorter than extension duration $extensionDuration"
+        }
+    }
 
     suspend fun startTracking(messages: Collection<MessageBound>, parentScope: CoroutineScope) {
         messages.groupBy(MessageBound::queue).forEach { (queue, byQueue) ->
@@ -114,7 +120,7 @@ internal class VisibilityManager(
             }
             .forEach { (_, failure) -> activeBatches.remove(failure.reference) }
 
-        schedule(extensionDuration - extensionThreshold, queue, reference)
+        schedule(interval, queue, reference)
     }
 
     private data class BatchMap<T>(private val batches: MutableMap<T, BatchRef<T>> = mutableMapOf()) {

@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.onEach
 
 // These are just best guess
 private const val CHUNK_WINDOW_FACTOR = .6
-private const val AUTO_VISIBILITY_FACTOR = 0.8
+private const val VISIBILITY_OFFSET_FACTOR = 0.2
 
 fun SqsConnector.consume(
     queue: Queue,
@@ -23,17 +23,16 @@ fun SqsConnector.consume(
         "visibilityTimeout must be finite and positive, got $visibilityTimeout"
     }
 
-    val visibilityExtension = visibilityTimeout * AUTO_VISIBILITY_FACTOR
     val visibilityManager =
         if (enableAutomaticVisibilityExtension) {
-            VisibilityManager(this@consume, visibilityExtension)
+            VisibilityManager(this@consume, visibilityTimeout, visibilityTimeout * VISIBILITY_OFFSET_FACTOR)
         } else {
             null
         }
 
     receive(queue, visibilityTimeout)
         .maybe { visibilityManager?.trackInbound(it) }
-        .applyConsumer(consumer, chunkWindow = visibilityExtension * CHUNK_WINDOW_FACTOR)
+        .applyConsumer(consumer, chunkWindow = visibilityTimeout * CHUNK_WINDOW_FACTOR)
         .onEach { applyMessageActions(it, queue) }
         .maybe { visibilityManager?.trackOutbound(it) }
         .collect {}
