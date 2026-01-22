@@ -2,16 +2,16 @@
 kotlin = "2.3.0"
 versions = "0.53.0"
 spotless = "8.1.0"
-maven-publish = "0.35.0"
+maven-publish = "0.36.0"
 
 kotlinx-coroutines = "1.10.2"
-kotlinx-datetime = "0.7.1-0.6.x-compat" # https://github.com/aws/aws-sdk-kotlin/issues/1755
-aws-kotlin = "1.5.122"
-jackson = "2.20.1"
+kotlinx-datetime = "0.7.1"
+aws-kotlin = "1.6.0"
+jackson = "2.21.0"
 slf4j = "2.0.17"
-logback = "1.5.24"
+logback = "1.5.25"
 arrow = "2.2.1.1"
-kotest = "6.0.7"
+kotest = "6.1.0"
 testcontainers = "2.0.3"
 
 [plugins]
