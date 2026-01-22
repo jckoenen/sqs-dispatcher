@@ -17,6 +17,16 @@ import kotlinx.coroutines.flow.onEach
 private const val CHUNK_WINDOW_FACTOR = .6
 private const val VISIBILITY_OFFSET_FACTOR = 0.2
 
+/**
+ * Consumes messages from the specified queue using the provided consumer. This function returns a [DrainableFlow]
+ * which, when collected, will start the consumption process.
+ *
+ * @param queue the queue to consume from
+ * @param consumer the consumer to use for processing messages
+ * @param enableAutomaticVisibilityExtension whether to automatically extend message visibility while processing
+ * @param visibilityTimeout the initial visibility timeout for received messages
+ * @return a [DrainableFlow] that can be started and gracefully stopped
+ */
 public fun SqsConnector.consume(
     queue: Queue,
     consumer: MessageConsumer,
@@ -43,6 +53,16 @@ public fun SqsConnector.consume(
         .collect {}
 }
 
+/**
+ * Consumes messages from the specified queue (by name) using the provided consumer. This function returns a
+ * [DrainableFlow] which, when collected, will start the consumption process.
+ *
+ * @param queueName the name of the queue to consume from
+ * @param consumer the consumer to use for processing messages
+ * @param enableAutomaticVisibilityExtension whether to automatically extend message visibility while processing
+ * @param visibilityTimeout the initial visibility timeout for received messages
+ * @return a [DrainableFlow] that can be started and gracefully stopped
+ */
 public fun SqsConnector.consume(
     queueName: Queue.Name,
     consumer: MessageConsumer,

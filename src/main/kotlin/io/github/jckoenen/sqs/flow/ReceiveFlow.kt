@@ -23,10 +23,9 @@ import kotlinx.coroutines.flow.onEach
  * Continuously receives messages from the specified SQS queue as a stream. The method uses indefinite retry logic to
  * handle transient polling errors and processes incoming messages as a drainable flow.
  *
- * @param queue The SQS queue from which messages are to be received.
- * @param visibilityTimeout The duration for which a polled message is invisible to other clients.
- * @return A drainable flow emitting lists of messages containing the content as strings.
- * @see DrainableFlow
+ * @param queue the SQS queue from which messages are to be received
+ * @param visibilityTimeout the duration for which a polled message is invisible to other clients
+ * @return a [DrainableFlow] emitting non-empty lists of messages
  */
 public fun SqsConnector.receive(
     queue: Queue,
@@ -49,14 +48,12 @@ public fun SqsConnector.receive(
 }
 
 /**
- * Receives messages from an SQS queue as a drainable flow, allowing for continuous or controlled consumption of
- * messages. The method retries indefinitely to fetch the queue details if the queue is not available or fails to
- * resolve initially. It then collects messages from the queue while respecting the specified visibility timeout.
+ * Receives messages from an SQS queue (by name) as a drainable flow. This method retries indefinitely to resolve the
+ * queue name and then continuously polls for messages.
  *
- * @param queueName The name of the SQS queue from which messages are to be received.
- * @param visibilityTimeout The duration a retrieved message should remain invisible to other consumers. Defaults to 30
- *   seconds.
- * @return A drainable flow emitting lists of messages containing the content as strings.
+ * @param queueName the name of the SQS queue from which messages are to be received
+ * @param visibilityTimeout the duration a retrieved message should remain invisible to other consumers
+ * @return a [DrainableFlow] emitting non-empty lists of messages
  */
 public fun SqsConnector.receive(
     queueName: Queue.Name,

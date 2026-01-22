@@ -6,14 +6,17 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * Represents a mechanism to control and manage draining operations within a coroutine-based context. Implementations of
- * this interface are expected to define the behavior for draining specific resources or flows of data.
+ * this interface define the behaviour for draining specific resources or flows of data.
  *
- * @property job A reference to the coroutine's [Job] that facilitates lifecycle management and structured concurrency
- *   for the draining operation.
+ * @property job A reference to the coroutine's [Job] that facilitates lifecycle management and structured concurrency.
  */
 public sealed interface DrainControl {
     public val job: Job
 
+    /**
+     * Signals that the operation should stop accepting new work and complete once all currently in-flight items are
+     * processed.
+     */
     public fun drain()
 }
 
@@ -23,9 +26,16 @@ public sealed interface DrainControl {
  * process.
  */
 public sealed interface DrainableFlow<T> : Flow<T> {
+    /**
+     * Launches the flow in the provided [scope] and returns a [DrainControl] to manage its lifecycle.
+     *
+     * @param scope the scope in which to launch the flow
+     * @return a [DrainControl] for managing the flow
+     */
     public fun launchWithDrainControl(scope: CoroutineScope): DrainControl
 }
 
+/** Signals that the operation should drain and waits for the underlying job to complete. */
 public suspend fun DrainControl.drainAndJoin() {
     drain()
     job.join()
