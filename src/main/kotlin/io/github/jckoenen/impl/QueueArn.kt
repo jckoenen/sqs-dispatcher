@@ -1,8 +1,11 @@
 package io.github.jckoenen.impl
 
 import arrow.core.flatMap
+import arrow.core.leftIor
 import aws.smithy.kotlin.runtime.net.url.Url
 import io.github.jckoenen.Queue
+import io.github.jckoenen.utils.asTags
+import io.github.jckoenen.utils.putAll
 import org.slf4j.LoggerFactory
 
 @ConsistentCopyVisibility
@@ -35,7 +38,7 @@ internal data class QueueArn private constructor(val accountId: String, val regi
                             Result.success(it)
                         }
                     }
-                    .onFailure { logger.atWarn().addKeyValue("queue.url", url.value).log("Invalid url received") }
+                    .onFailure { logger.atWarn().putAll(url.leftIor().asTags()).log("Invalid url received") }
                     .getOrNull() ?: return null
 
             val region =

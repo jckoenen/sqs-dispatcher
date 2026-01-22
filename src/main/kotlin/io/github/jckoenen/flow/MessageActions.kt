@@ -79,16 +79,16 @@ private inline fun <reified A : Action> BatchResult<Failure, *>.logOutcome(ignor
     getOrNull()?.let { success ->
         SqsConnector.logger
             .atDebug()
-            .addKeyValue("action", A::class.simpleName)
-            .addKeyValue("messages.count", success.size)
+            .addKeyValue("sqs.action", A::class.simpleName)
+            .addKeyValue("sqs.messages.count", success.size)
             .log("Action succeeded")
     }
 
     leftOrNull().orEmpty().forEach { (cause, messages) ->
         SqsConnector.logger
             .atWarn()
-            .addKeyValue("action", A::class.simpleName)
-            .addKeyValue("messages.count", messages.size)
+            .addKeyValue("sqs.action", A::class.simpleName)
+            .addKeyValue("sqs.messages.count", messages.size)
             .putAll(cause.allTags())
             .log("Action (partially?) failed")
     }

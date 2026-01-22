@@ -1,6 +1,7 @@
 package io.github.jckoenen.impl.kotlin
 
 import arrow.core.Either
+import arrow.core.Ior
 import arrow.core.raise.either
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.createQueue
@@ -13,6 +14,8 @@ import io.github.jckoenen.SqsConnector
 import io.github.jckoenen.SqsFailure
 import io.github.jckoenen.impl.QueueArn
 import io.github.jckoenen.impl.RedrivePolicy
+import io.github.jckoenen.utils.asTags
+import io.github.jckoenen.utils.putAll
 
 internal suspend fun SqsClient.getOrCreateQueue(
     json: ObjectMapper,
@@ -22,6 +25,8 @@ internal suspend fun SqsClient.getOrCreateQueue(
     val targetQueueUrl = doCreateQueue(json, name).bind()
     val existingDlqUrl = getDlqUrl(json, targetQueueUrl).bind()
 
+    val mainQueue = Ior.Both(targetQueueUrl, name)
+
     val finalDlqUrl =
         when {
             existingDlqUrl == null && !createDlq -> null
@@ -30,8 +35,8 @@ internal suspend fun SqsClient.getOrCreateQueue(
                 attachDlq(targetQueueUrl, json, created).bind()
                 SqsConnector.logger
                     .atInfo()
-                    .addKeyValue("queue.name", name.value)
-                    .addKeyValue("dlq.url", created.value)
+                    .putAll(mainQueue.asTags())
+                    .addKeyValue("sqs.dlq.url", created.value)
                     .log("Configured DLQ for existing queue")
                 created
             }
@@ -39,8 +44,8 @@ internal suspend fun SqsClient.getOrCreateQueue(
             else -> {
                 SqsConnector.logger
                     .atWarn()
-                    .addKeyValue("queue.name", name.value)
-                    .addKeyValue("dlq.url", existingDlqUrl.value)
+                    .putAll(mainQueue.asTags())
+                    .addKeyValue("sqs.dlq.url", existingDlqUrl.value)
                     .log("Queue already exists with DLQ configured, will not delete DLQ")
                 existingDlqUrl
             }
@@ -97,15 +102,14 @@ private suspend fun SqsClient.doCreateQueue(
                 }
                 requireNotNull(q.queueUrl) { "Call did not return a url" }
             }
+            .map(Queue::Url)
             .bind()
 
-    SqsConnector.logger
-        .atInfo()
-        .addKeyValue("queue.name", name.value)
-        .addKeyValue("queue.url", url)
-        .log("Possibly created new queue")
+    val id = Ior.Both(url, name)
 
-    Queue.Url(url)
+    SqsConnector.logger.atInfo().putAll(id.asTags()).log("Possibly created new queue")
+
+    id.leftValue
 }
 
 private fun dlqName(source: Queue.Name) =
