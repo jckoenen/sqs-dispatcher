@@ -6,6 +6,7 @@ import io.github.jckoenen.sqs.utils.QueueId
 import io.github.jckoenen.sqs.utils.asTags
 import io.github.jckoenen.sqs.utils.opTag
 
+/** Represents failures that can occur when interacting with SQS. */
 public sealed interface SqsFailure : Failure {
     public sealed interface GetQueueFailure : SqsFailure
 
