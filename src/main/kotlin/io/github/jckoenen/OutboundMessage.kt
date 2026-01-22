@@ -1,11 +1,11 @@
 package io.github.jckoenen
 
-data class OutboundMessage(
+public data class OutboundMessage(
     val content: String,
     val attributes: Map<String, String> = emptyMap(),
     val fifo: Fifo? = null,
 ) {
-    data class Fifo(
+    public data class Fifo(
         override val groupId: Message.Fifo.GroupId,
         override val deduplicationId: Message.Fifo.DeduplicationId,
     ) : Message.Fifo

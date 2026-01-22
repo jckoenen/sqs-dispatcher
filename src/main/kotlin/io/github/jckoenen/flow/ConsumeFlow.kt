@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.onEach
 private const val CHUNK_WINDOW_FACTOR = .6
 private const val VISIBILITY_OFFSET_FACTOR = 0.2
 
-fun SqsConnector.consume(
+public fun SqsConnector.consume(
     queue: Queue,
     consumer: MessageConsumer,
     enableAutomaticVisibilityExtension: Boolean = true,
@@ -43,7 +43,7 @@ fun SqsConnector.consume(
         .collect {}
 }
 
-fun SqsConnector.consume(
+public fun SqsConnector.consume(
     queueName: Queue.Name,
     consumer: MessageConsumer,
     enableAutomaticVisibilityExtension: Boolean = true,

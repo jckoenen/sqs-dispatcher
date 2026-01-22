@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.onEach
  * @return A drainable flow emitting lists of messages containing the content as strings.
  * @see DrainableFlow
  */
-fun SqsConnector.receive(
+public fun SqsConnector.receive(
     queue: Queue,
     visibilityTimeout: Duration = 30.seconds,
 ): DrainableFlow<Nel<Message<String>>> {
@@ -58,7 +58,7 @@ fun SqsConnector.receive(
  *   seconds.
  * @return A drainable flow emitting lists of messages containing the content as strings.
  */
-fun SqsConnector.receive(
+public fun SqsConnector.receive(
     queueName: Queue.Name,
     visibilityTimeout: Duration = 30.seconds,
 ): DrainableFlow<Nel<Message<String>>> =

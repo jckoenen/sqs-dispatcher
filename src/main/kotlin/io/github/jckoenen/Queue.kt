@@ -1,15 +1,15 @@
 package io.github.jckoenen
 
-sealed interface Queue {
-    @JvmInline value class Name(val value: String)
+public sealed interface Queue {
+    @JvmInline public value class Name(public val value: String)
 
-    @JvmInline value class Url(val value: String)
+    @JvmInline public value class Url(public val value: String)
 
-    val name: Name
-    val url: Url
-    val dlq: Queue?
+    public val name: Name
+    public val url: Url
+    public val dlq: Queue?
 
-    sealed interface Fifo : Queue
+    public sealed interface Fifo : Queue
 }
 
 internal data class QueueImpl(

@@ -6,19 +6,19 @@ import io.github.jckoenen.utils.QueueId
 import io.github.jckoenen.utils.asTags
 import io.github.jckoenen.utils.opTag
 
-sealed interface SqsFailure : Failure {
-    sealed interface GetQueueFailure : SqsFailure
+public sealed interface SqsFailure : Failure {
+    public sealed interface GetQueueFailure : SqsFailure
 
-    sealed interface CreateQueueFailure : SqsFailure, GetQueueFailure
+    public sealed interface CreateQueueFailure : SqsFailure, GetQueueFailure
 
-    sealed interface ReceiveMessagesFailure : SqsFailure
+    public sealed interface ReceiveMessagesFailure : SqsFailure
 
-    sealed interface SendMessagesFailure : SqsFailure
+    public sealed interface SendMessagesFailure : SqsFailure
 
-    sealed interface DeleteMessagesFailure : SqsFailure
+    public sealed interface DeleteMessagesFailure : SqsFailure
 
-    sealed interface ChangeMessagesFailure : SqsFailure {
-        data class MessageAlreadyDeleted(val queue: QueueId) : ChangeMessagesFailure {
+    public sealed interface ChangeMessagesFailure : SqsFailure {
+        public data class MessageAlreadyDeleted(val queue: QueueId) : ChangeMessagesFailure {
             override val customTags: Map<String, Any>
                 get() = opTag(CHANGE_OPERATION) + queue.asTags()
 
@@ -27,7 +27,7 @@ sealed interface SqsFailure : Failure {
         }
     }
 
-    data class QueueDoesNotExist(
+    public data class QueueDoesNotExist(
         val operation: String,
         val queue: QueueId,
         override val message: String = "The target queue does not exist"
@@ -36,7 +36,7 @@ sealed interface SqsFailure : Failure {
             get() = opTag(operation) + queue.asTags()
     }
 
-    data class UnknownFailure(
+    public data class UnknownFailure(
         val operation: String,
         val queue: QueueId,
         val cause: Exception,
@@ -55,7 +55,7 @@ sealed interface SqsFailure : Failure {
             get() = cause.message ?: "Exception did not provide a message"
     }
 
-    data class Throttled(val operation: String, val queue: QueueId) :
+    public data class Throttled(val operation: String, val queue: QueueId) :
         GetQueueFailure,
         CreateQueueFailure,
         ReceiveMessagesFailure,
@@ -69,7 +69,7 @@ sealed interface SqsFailure : Failure {
             get() = "Call failed due to AWS throttling"
     }
 
-    data class KmsFailure(val operation: String, val cause: SdkBaseException, val queue: QueueId) :
+    public data class KmsFailure(val operation: String, val cause: SdkBaseException, val queue: QueueId) :
         ReceiveMessagesFailure, SendMessagesFailure {
         override val customTags: Map<String, Any>
             get() = opTag(operation) + queue.asTags()
@@ -78,7 +78,7 @@ sealed interface SqsFailure : Failure {
             get() = "Couldn't read messages due to underlying KMS issue"
     }
 
-    data class PartialFailure(val operation: String, val queue: QueueId) :
+    public data class PartialFailure(val operation: String, val queue: QueueId) :
         SendMessagesFailure, DeleteMessagesFailure, ChangeMessagesFailure {
         override val customTags: Map<String, Any>
             get() = opTag(operation) + queue.asTags()

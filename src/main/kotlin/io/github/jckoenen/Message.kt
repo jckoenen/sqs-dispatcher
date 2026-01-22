@@ -1,22 +1,22 @@
 package io.github.jckoenen
 
-sealed interface Message<out T : Any> : MessageBound {
-    @JvmInline value class Id(val value: String)
+public sealed interface Message<out T : Any> : MessageBound {
+    @JvmInline public value class Id(public val value: String)
 
-    @JvmInline value class ReceiptHandle(val value: String)
+    @JvmInline public value class ReceiptHandle(public val value: String)
 
-    val id: Id
-    val attributes: Map<String, String>
-    val content: T
+    public val id: Id
+    public val attributes: Map<String, String>
+    public val content: T
 
-    sealed interface Fifo {
-        @JvmInline value class GroupId(val value: String)
+    public sealed interface Fifo {
+        @JvmInline public value class GroupId(public val value: String)
 
-        @JvmInline value class DeduplicationId(val value: String)
+        @JvmInline public value class DeduplicationId(public val value: String)
 
         // TODO: Non Fifo messages can have groupIds now
-        val groupId: GroupId
-        val deduplicationId: DeduplicationId
+        public val groupId: GroupId
+        public val deduplicationId: DeduplicationId
     }
 }
 
