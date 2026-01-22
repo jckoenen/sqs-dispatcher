@@ -5,30 +5,23 @@ package io.github.jckoenen.sqs
  *
  * @property content the body of the message
  * @property attributes the message attributes
- * @property fifo FIFO-specific settings for the message, if applicable
+ * @property groupId the group identifier for the message
+ * @property deduplicationId the deduplication identifier for the message (only applicable to FIFO)
  */
 public data class OutboundMessage(
     val content: String,
     val attributes: Map<String, String> = emptyMap(),
-    val fifo: Fifo? = null,
+    val groupId: Message.GroupId? = null,
+    val deduplicationId: Message.Fifo.DeduplicationId? = null,
 ) {
-    /**
-     * FIFO-specific settings for an outbound message.
-     *
-     * @property groupId the group identifier for the message
-     * @property deduplicationId the deduplication identifier for the message
-     */
-    public data class Fifo(
-        override val groupId: Message.Fifo.GroupId,
-        override val deduplicationId: Message.Fifo.DeduplicationId,
-    ) : Message.Fifo
 
     internal companion object {
         fun fromMessage(message: Message<String>) =
             OutboundMessage(
                 content = message.content,
                 attributes = message.attributes,
-                fifo = (message as? Message.Fifo)?.let { Fifo(it.groupId, it.deduplicationId) },
+                groupId = message.groupId,
+                deduplicationId = (message as? Message.Fifo)?.deduplicationId,
             )
     }
 }

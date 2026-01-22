@@ -1,5 +1,7 @@
 package io.github.jckoenen.sqs
 
+import io.github.jckoenen.sqs.Message.GroupId
+
 /**
  * A message received from an SQS queue.
  *
@@ -12,6 +14,9 @@ public sealed interface Message<out T : Any> : MessageBound {
     /** An identifier used to delete the message or change its visibility. */
     @JvmInline public value class ReceiptHandle(public val value: String)
 
+    /** The tag that specifies that a message belongs to a specific message group. */
+    @JvmInline public value class GroupId(public val value: String)
+
     /** The unique identifier of the message. */
     public val id: Id
     /** The message attributes. */
@@ -19,15 +24,14 @@ public sealed interface Message<out T : Any> : MessageBound {
     /** The deserialized content of the message. */
     public val content: T
 
+    /** The group identifier of the message. */
+    public val groupId: GroupId?
+
     /** Features specific to messages from FIFO queues. */
     public sealed interface Fifo {
-        /** The tag that specifies that a message belongs to a specific message group. */
-        @JvmInline public value class GroupId(public val value: String)
-
         /** The token used for deduplication of sent messages. */
         @JvmInline public value class DeduplicationId(public val value: String)
 
-        // TODO: Non Fifo messages can have groupIds now
         /** The group identifier of the message. */
         public val groupId: GroupId
         /** The deduplication identifier of the message. */
@@ -41,6 +45,7 @@ internal data class MessageImpl<T : Any>(
     override val attributes: Map<String, String>,
     override val content: T,
     override val queue: Queue,
+    override val groupId: GroupId?
 ) : Message<T>
 
 internal data class FifoMessageImpl<T : Any>(
@@ -49,6 +54,6 @@ internal data class FifoMessageImpl<T : Any>(
     override val attributes: Map<String, String>,
     override val content: T,
     override val queue: Queue.Fifo,
-    override val groupId: Message.Fifo.GroupId,
+    override val groupId: GroupId,
     override val deduplicationId: Message.Fifo.DeduplicationId,
 ) : Message<T>, Message.Fifo
