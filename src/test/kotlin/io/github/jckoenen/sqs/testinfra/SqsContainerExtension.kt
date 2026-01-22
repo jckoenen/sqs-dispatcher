@@ -57,6 +57,12 @@ internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListe
             client
         }
 
+    override suspend fun beforeProject() {
+        // start container eagerly on CI to get better test timings
+        if (System.getenv("CI").isNullOrBlank()) return
+        client.await()
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun afterProject() {
         super.afterProject()
