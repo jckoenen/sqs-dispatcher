@@ -4,8 +4,6 @@ import io.kotest.assertions.nondeterministic.EventuallyConfiguration
 import io.kotest.assertions.nondeterministic.eventuallyConfig
 import io.kotest.core.config.AbstractProjectConfig
 import io.kotest.core.extensions.Extension
-import io.kotest.engine.concurrency.SpecExecutionMode
-import io.kotest.engine.concurrency.TestExecutionMode
 import io.kotest.extensions.junitxml.JunitXmlReporter
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
@@ -15,8 +13,6 @@ class ProjectKotestConfiguration : AbstractProjectConfig() {
     override val extensions: List<Extension> = listOf(SqsContainerExtension, JunitXmlReporter())
 
     override val failOnEmptyTestSuite: Boolean = true
-    override val specExecutionMode = SpecExecutionMode.Concurrent
-    override val testExecutionMode = TestExecutionMode.Concurrent
     override val coroutineDebugProbes: Boolean = true
 
     companion object {
