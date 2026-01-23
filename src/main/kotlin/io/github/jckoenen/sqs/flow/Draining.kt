@@ -35,6 +35,22 @@ public sealed interface DrainableFlow<T> : Flow<T> {
     public fun launchWithDrainControl(scope: CoroutineScope): DrainControl
 }
 
+/**
+ * Converts this [Flow] into a [DrainableFlow], enabling graceful termination through [DrainControl].
+ *
+ * When [DrainControl.drain] is invoked on the control object returned by [DrainableFlow.launchWithDrainControl]:
+ * - The upstream of the [drainable] operator is cancelled.
+ * - Elements already in the flow's pipeline continue to be processed by downstream operators.
+ * - If multiple [drainable] operators are used in a chain, only the one closest to the source (the first one applied to
+ *   the source flow) is cancelled, which ensures the entire pipeline can drain its remaining elements.
+ *
+ * @param T the type of elements in the flow.
+ * @return a [DrainableFlow] that supports graceful draining.
+ * @see DrainControl.drain
+ * @see DrainableFlow.launchWithDrainControl
+ */
+public fun <T> Flow<T>.drainable(): DrainableFlow<T> = drainableImpl()
+
 /** Signals that the operation should drain and waits for the underlying job to complete. */
 public suspend fun DrainControl.drainAndJoin() {
     drain()

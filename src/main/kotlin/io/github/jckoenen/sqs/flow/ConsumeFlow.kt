@@ -32,7 +32,7 @@ public fun SqsConnector.consume(
     consumer: MessageConsumer,
     enableAutomaticVisibilityExtension: Boolean = true,
     visibilityTimeout: Duration = 30.seconds,
-): DrainableFlow<Nothing> = drainable {
+): DrainableFlow<Nothing> = drainableImpl {
     check(visibilityTimeout.isFinite() && visibilityTimeout.isPositive()) {
         "visibilityTimeout must be finite and positive, got $visibilityTimeout"
     }
@@ -68,7 +68,7 @@ public fun SqsConnector.consume(
     consumer: MessageConsumer,
     enableAutomaticVisibilityExtension: Boolean = true,
     visibilityTimeout: Duration = 30.seconds,
-): DrainableFlow<Nothing> = drainable {
+): DrainableFlow<Nothing> = drainableImpl {
     val q = resolveQueue(queueName)
 
     consume(q, consumer, enableAutomaticVisibilityExtension, visibilityTimeout).collect(::emit)
