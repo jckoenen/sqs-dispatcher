@@ -1,11 +1,10 @@
 package io.github.jckoenen.sqs.flow
 
+import arrow.atomic.Atomic
 import kotlin.coroutines.CoroutineContext
 import kotlin.experimental.ExperimentalTypeInference
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
@@ -17,14 +16,13 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 
-internal fun <T> Flow<T>.drainable(): DrainableFlow<T> =
+internal fun <T> Flow<T>.drainableImpl(): DrainableFlow<T> =
     channelFlow {
             val upstream = onEach(::send).launchIn(this)
             val drain = currentCoroutineContext()[DrainControlElement]
 
             if (drain != null) {
-                drain.signal.await()
-                upstream.cancelAndJoin()
+                drain.head.set(upstream)
             } else {
                 LoggerFactory.getLogger(DrainableFlow::class.java)
                     .warn("Drainable flow did not have a drain signal attached")
@@ -34,20 +32,20 @@ internal fun <T> Flow<T>.drainable(): DrainableFlow<T> =
 
 @OptIn(ExperimentalTypeInference::class)
 @BuilderInference
-internal fun <T> drainable(f: suspend FlowCollector<T>.() -> Unit) = flow(f).drainable()
+internal fun <T> drainableImpl(f: suspend FlowCollector<T>.() -> Unit) = flow(f).drainableImpl()
 
 @JvmInline
 internal value class DrainableFlowImpl<T>(private val delegate: Flow<T>) : DrainableFlow<T> {
     override suspend fun collect(collector: FlowCollector<T>) = delegate.collect(collector)
 
     override fun launchWithDrainControl(scope: CoroutineScope): DrainControl {
-        val element = DrainControlElement(CompletableDeferred())
+        val element = DrainControlElement()
         val job = scope.launch(element) { collect() }
         return DrainControlImpl(job, element)
     }
 }
 
-private data class DrainControlElement(val signal: CompletableDeferred<Unit>) : CoroutineContext.Element {
+private class DrainControlElement(val head: Atomic<Job?> = Atomic()) : CoroutineContext.Element {
     override val key: CoroutineContext.Key<*>
         get() = DrainControlElement
 
@@ -59,6 +57,6 @@ private data class DrainControlImpl(
     private val element: DrainControlElement,
 ) : DrainControl {
     override fun drain() {
-        element.signal.complete(Unit)
+        element.head.getAndSet(null)?.cancel()
     }
 }
