@@ -1,12 +1,13 @@
 package io.github.jckoenen.sqs.impl
 
-import arrow.core.flatMap
-import arrow.core.leftIor
+import arrow.core.Either
+import arrow.core.raise.either
+import arrow.core.raise.ensure
+import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.smithy.kotlin.runtime.net.url.Url
+import io.github.jckoenen.sqs.FifoQueueImpl
 import io.github.jckoenen.sqs.Queue
-import io.github.jckoenen.sqs.utils.asTags
-import io.github.jckoenen.sqs.utils.putAll
-import org.slf4j.LoggerFactory
+import io.github.jckoenen.sqs.QueueImpl
 
 @ConsistentCopyVisibility
 internal data class QueueArn private constructor(val accountId: String, val region: String, val name: Queue.Name) {
@@ -25,21 +26,25 @@ internal data class QueueArn private constructor(val accountId: String, val regi
             .append(name.value)
     }
 
-    companion object {
-        private val logger = LoggerFactory.getLogger(QueueArn::class.java)
+    fun toUrl(config: SqsClient.Config) = Queue.Url("${config.endpointUrl}/${accountId}/${name.value}")
 
-        fun fromUrl(url: Queue.Url): QueueArn? {
+    companion object {
+        val Queue.arn
+            get() =
+                when (this) {
+                    is FifoQueueImpl -> arn
+                    is QueueImpl -> arn
+                }
+
+        fun fromUrl(url: Queue.Url): Either<String, QueueArn> = either {
             val parsed =
-                runCatching { Url.parse(url.value) }
-                    .flatMap {
-                        if (!it.hostAndPort.startsWith("sqs.") || it.path.segments.size < 2) {
-                            Result.failure(IllegalArgumentException(""))
-                        } else {
-                            Result.success(it)
-                        }
-                    }
-                    .onFailure { logger.atWarn().putAll(url.leftIor().asTags()).log("Invalid url received") }
-                    .getOrNull() ?: return null
+                try {
+                    Url.parse(url.value)
+                } catch (iae: IllegalArgumentException) {
+                    raise(iae.message ?: "Cannot parse ${url.value} as URL")
+                }
+            ensure(parsed.hostAndPort.startsWith("sqs.")) { "URL ${url.value} does not belong to SQS" }
+            ensure(parsed.path.segments.size >= 2) { "URL ${url.value} does not contain region" }
 
             val region =
                 with(parsed.hostAndPort) {
@@ -49,13 +54,20 @@ internal data class QueueArn private constructor(val accountId: String, val regi
                 }
             val (account, name) = parsed.path.segments.map { it.encoded }
 
-            return QueueArn(account, region, Queue.Name(name))
+            QueueArn(account, region, Queue.Name(name))
         }
 
-        fun fromString(arn: String): QueueArn? {
+        fun fromString(arn: String): Either<String, QueueArn> = either {
             val components = arn.split(':')
-            if (components.size < 6 || components[2] != "sqs") return null
-            return QueueArn(components[4], components[3], Queue.Name(components[5]))
+            when {
+                components.size < 6 ->
+                    raise("Invalid SQS ARN ${arn}. Expected at least 6 parts, got ${components.size}")
+
+                components[2] != "sqs" ->
+                    raise("Invalid SQS arn ${arn}. Third component must be 'sqs', but got '${components[2]}'")
+
+                else -> QueueArn(components[4], components[3], Queue.Name(components[5]))
+            }
         }
     }
 }

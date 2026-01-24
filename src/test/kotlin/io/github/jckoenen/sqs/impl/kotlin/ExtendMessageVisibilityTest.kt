@@ -2,7 +2,6 @@ package io.github.jckoenen.sqs.impl.kotlin
 
 import arrow.core.PotentiallyUnsafeNonEmptyOperation
 import arrow.core.nonEmptyListOf
-import arrow.core.toNonEmptyListOrThrow
 import arrow.core.wrapAsNonEmptyListOrThrow
 import io.github.jckoenen.sqs.OutboundMessage
 import io.github.jckoenen.sqs.SqsFailure.ChangeMessagesFailure.MessageAlreadyDeleted
@@ -27,7 +26,7 @@ class ExtendMessageVisibilityTest : FreeSpec({
         val connector = SqsContainerExtension.newConnector()
 
         "should fail with expected error" {
-            val queue = connector.getOrCreateQueue(queueName()).assumeRight()
+            val queue = connector.getOrCreateQueue(queueName(), false).assumeRight()
             val outbound = OutboundMessage("hello, world")
 
             connector.sendMessages(queue.url, nonEmptyListOf(outbound)).assumeRight()

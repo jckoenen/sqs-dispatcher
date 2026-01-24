@@ -5,7 +5,6 @@ import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.listQueues
 import aws.smithy.kotlin.runtime.net.url.Url
 import io.github.jckoenen.sqs.Queue
-import io.github.jckoenen.sqs.SqsConnector
 import io.github.jckoenen.sqs.impl.kotlin.KotlinSqsConnector
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.core.listeners.AfterProjectListener
@@ -72,8 +71,7 @@ internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListe
         }
     }
 
-    suspend fun newConnector(clientOverride: SqsClient? = null): SqsConnector =
-        KotlinSqsConnector(clientOverride ?: client.await())
+    suspend fun newConnector(clientOverride: SqsClient? = null) = KotlinSqsConnector(clientOverride ?: client.await())
 
     fun TestScope.queueName(): Queue.Name =
         testCase.descriptor

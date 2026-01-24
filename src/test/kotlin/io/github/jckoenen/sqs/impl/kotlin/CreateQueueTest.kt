@@ -1,11 +1,10 @@
 package io.github.jckoenen.sqs.impl.kotlin
 
-import io.github.jckoenen.sqs.Queue
 import io.github.jckoenen.sqs.impl.shouldDenoteSameQueueAs
 import io.github.jckoenen.sqs.testinfra.SqsContainerExtension
 import io.github.jckoenen.sqs.testinfra.SqsContainerExtension.queueName
 import io.github.jckoenen.sqs.testinfra.assumeRight
-import io.github.jckoenen.sqs.testinfra.right
+import io.github.jckoenen.sqs.testinfra.beRight
 import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.beNull
@@ -22,7 +21,7 @@ class CreateQueueTest : FreeSpec({
             "without dlq" {
                 val expect = queueName()
 
-                subject.getOrCreateQueue(expect, createDlq = false) shouldBe right<Queue> {
+                subject.getOrCreateQueue(expect, createDlq = false) should beRight {
                     dlq should beNull()
                     name shouldBe expect
                 }
@@ -30,7 +29,7 @@ class CreateQueueTest : FreeSpec({
             "with dlq" {
                 val expect = queueName()
 
-                subject.getOrCreateQueue(queueName(), createDlq = true) shouldBe right<Queue> {
+                subject.getOrCreateQueue(queueName(), createDlq = true) should beRight {
                     dlq shouldNot beNull()
                     name shouldBe expect
                 }
@@ -40,7 +39,7 @@ class CreateQueueTest : FreeSpec({
             "with existing dlq" {
                 val existing = subject.getOrCreateQueue(queueName(), createDlq = true).assumeRight()
 
-                subject.getOrCreateQueue(existing.name, createDlq = true) shouldBe right<Queue> {
+                subject.getOrCreateQueue(existing.name, createDlq = true) should beRight {
                     name shouldBe existing.name
                     url shouldBe existing.url
                     dlq?.url shouldDenoteSameQueueAs existing.dlq?.url
@@ -49,7 +48,7 @@ class CreateQueueTest : FreeSpec({
             "with existing dlq even though createdDlq = false" {
                 val existing = subject.getOrCreateQueue(queueName(), createDlq = true).assumeRight()
 
-                subject.getOrCreateQueue(existing.name, createDlq = false) shouldBe right<Queue> {
+                subject.getOrCreateQueue(existing.name, createDlq = false) should beRight {
                     name shouldBe existing.name
                     url shouldBe existing.url
                     dlq?.url shouldDenoteSameQueueAs existing.dlq?.url
@@ -59,7 +58,7 @@ class CreateQueueTest : FreeSpec({
             "with newly created dlq" {
                 val existing = subject.getOrCreateQueue(queueName(), createDlq = false).assumeRight()
 
-                subject.getOrCreateQueue(existing.name, createDlq = true) shouldBe right<Queue> {
+                subject.getOrCreateQueue(existing.name, createDlq = true) should beRight {
                     name shouldBe existing.name
                     url shouldBe existing.url
                     dlq.shouldNotBeNull()
