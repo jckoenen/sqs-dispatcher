@@ -1,5 +1,7 @@
 package io.github.jckoenen.sqs
 
+import io.github.jckoenen.sqs.impl.QueueArn
+
 /** Represents an SQS queue. */
 public sealed interface Queue {
     /** The name of the queue. */
@@ -23,10 +25,12 @@ internal data class QueueImpl(
     override val name: Queue.Name,
     override val url: Queue.Url,
     override val dlq: Queue?,
+    val arn: QueueArn
 ) : Queue
 
 internal data class FifoQueueImpl(
     override val name: Queue.Name,
     override val url: Queue.Url,
     override val dlq: Queue?,
+    val arn: QueueArn
 ) : Queue.Fifo

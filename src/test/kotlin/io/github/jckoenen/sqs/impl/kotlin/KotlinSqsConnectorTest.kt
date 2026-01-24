@@ -25,7 +25,7 @@ class KotlinSqsConnectorTest : FreeSpec({
     "The kotlin implementation" - {
         val subject = SqsContainerExtension.newConnector()
         val count = 255
-        val queue = subject.getOrCreateQueue(queueName()).assumeRight()
+        val queue = subject.getOrCreateQueue(queueName(), false).assumeRight()
 
         "should produce and consume messages correctly" {
             val expected =

@@ -1,7 +1,7 @@
 package io.github.jckoenen.sqs.impl.kotlin
 
 import arrow.core.Either
-import arrow.core.Ior
+import arrow.core.leftIor
 import arrow.core.raise.either
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.createQueue
@@ -12,61 +12,55 @@ import io.github.jckoenen.sqs.QueueImpl
 import io.github.jckoenen.sqs.SqsConnector
 import io.github.jckoenen.sqs.SqsFailure
 import io.github.jckoenen.sqs.impl.QueueArn
+import io.github.jckoenen.sqs.impl.QueueArn.Companion.arn
 import io.github.jckoenen.sqs.impl.RedrivePolicy
 import io.github.jckoenen.sqs.utils.asTags
+import io.github.jckoenen.sqs.utils.id
 import io.github.jckoenen.sqs.utils.putAll
+
+private const val CREATE_OP = "SQS.CreateQueue"
 
 internal suspend fun SqsClient.getOrCreateQueue(
     name: Queue.Name,
     createDlq: Boolean,
 ): Either<SqsFailure.CreateQueueFailure, Queue> = either {
-    val targetQueueUrl = doCreateQueue(name).bind()
-    val existingDlqUrl = getDlqUrl(targetQueueUrl).bind()
-
-    val mainQueue = Ior.Both(targetQueueUrl, name)
+    val targetQueue = doCreateQueue(name).bind()
+    val existingDlq = getDlq(targetQueue.url).bind()
 
     val finalDlqUrl =
         when {
-            existingDlqUrl == null && !createDlq -> null
-            existingDlqUrl == null -> {
+            existingDlq == null && !createDlq -> null
+            existingDlq == null -> {
                 val created = doCreateQueue(dlqName(name)).bind()
-                attachDlq(targetQueueUrl, created).bind()
+                attachDlq(targetQueue.url, created.arn).bind()
                 SqsConnector.logger
                     .atInfo()
-                    .putAll(mainQueue.asTags())
-                    .addKeyValue("sqs.dlq.url", created.value)
+                    .putAll(targetQueue.id().asTags())
+                    .addKeyValue("sqs.dlq.url", created.id().asTags())
                     .log("Configured DLQ for existing queue")
                 created
             }
 
-            createDlq -> existingDlqUrl
+            createDlq -> existingDlq
             else -> {
                 SqsConnector.logger
                     .atWarn()
-                    .putAll(mainQueue.asTags())
-                    .addKeyValue("sqs.dlq.url", existingDlqUrl.value)
+                    .putAll(targetQueue.id().asTags())
+                    .addKeyValue("sqs.dlq.url", existingDlq.id().asTags())
                     .log("Queue already exists with DLQ configured, will not delete DLQ")
-                existingDlqUrl
+                existingDlq
             }
         }
 
-    val dlq =
-        when {
-            finalDlqUrl == null -> null
-            name.designatesFifo() -> FifoQueueImpl(Queue.Name("dlq-${name.value}"), finalDlqUrl, null)
-            else -> QueueImpl(Queue.Name("dlq-${name.value}"), finalDlqUrl, null)
-        }
-
-    if (name.designatesFifo()) {
-        FifoQueueImpl(name, targetQueueUrl, dlq)
-    } else {
-        QueueImpl(name, targetQueueUrl, dlq)
+    when (targetQueue) {
+        is FifoQueueImpl -> targetQueue.copy(dlq = finalDlqUrl)
+        is QueueImpl -> targetQueue.copy(dlq = finalDlqUrl)
     }
 }
 
 private suspend fun SqsClient.attachDlq(
     targetQueueUrl: Queue.Url,
-    created: Queue.Url,
+    dlqArn: QueueArn,
 ) =
     execute(unknownFailure("SQS.SetQueueAttributes", targetQueueUrl)) {
         setQueueAttributes {
@@ -75,9 +69,8 @@ private suspend fun SqsClient.attachDlq(
                 buildAttributes(
                     redrivePolicy =
                         RedrivePolicy(
-                            // TODO: config
                             maxReceiveCount = 5,
-                            deadLetterTargetArn = QueueArn.fromUrl(created).toString(),
+                            deadLetterTargetArn = dlqArn.toString(),
                         ),
                 )
         }
@@ -87,7 +80,7 @@ private suspend fun SqsClient.doCreateQueue(
     name: Queue.Name,
 ) = either {
     val url =
-        execute(unknownFailure("SQS.CreateQueue", name)) {
+        execute(unknownFailure(CREATE_OP, name)) {
                 val q = createQueue {
                     queueName = name.value
                     attributes = buildAttributes(isFifo = name.designatesFifo())
@@ -97,11 +90,20 @@ private suspend fun SqsClient.doCreateQueue(
             .map(Queue::Url)
             .bind()
 
-    val id = Ior.Both(url, name)
+    val arn =
+        QueueArn.fromUrl(url)
+            .mapLeft { SqsFailure.UnknownFailure(CREATE_OP, url.leftIor(), IllegalArgumentException(it)) }
+            .bind()
 
-    SqsConnector.logger.atInfo().putAll(id.asTags()).log("Possibly created new queue")
+    val queue =
+        if (name.designatesFifo()) {
+            FifoQueueImpl(name, url, null, arn)
+        } else {
+            QueueImpl(name, url, null, arn)
+        }
+    SqsConnector.logger.atInfo().putAll(queue.id().asTags()).log("Possibly created new queue")
 
-    id.leftValue
+    queue
 }
 
 private fun dlqName(source: Queue.Name) =

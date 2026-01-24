@@ -1,36 +1,43 @@
 package io.github.jckoenen.sqs.impl.kotlin
 
-import arrow.core.Either
+import arrow.core.leftIor
 import arrow.core.raise.either
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.getQueueAttributes
 import aws.sdk.kotlin.services.sqs.model.QueueAttributeName
+import io.github.jckoenen.sqs.FifoQueueImpl
 import io.github.jckoenen.sqs.Queue
+import io.github.jckoenen.sqs.QueueImpl
 import io.github.jckoenen.sqs.SqsFailure
 import io.github.jckoenen.sqs.impl.RedrivePolicy
 import kotlinx.serialization.json.Json
 
 private val DEFAULT_JSON = Json { ignoreUnknownKeys = true }
+private const val GET_ATTRIBUTES_OP = "SQS.GetQueueAttributes"
 
-internal suspend fun SqsClient.getDlqUrl(
-    url: Queue.Url,
-): Either<SqsFailure.UnknownFailure, Queue.Url?> = either {
+internal suspend fun SqsClient.getDlq(url: Queue.Url) = either {
     val attributes =
-        execute(unknownFailure("SQS.GetQueueAttributes", url)) {
+        execute(unknownFailure(GET_ATTRIBUTES_OP, url)) {
                 getQueueAttributes {
-                        queueUrl = url.value
-                        attributeNames = listOf(QueueAttributeName.RedrivePolicy)
-                    }
-                    .attributes
-                    .orEmpty()
+                    queueUrl = url.value
+                    attributeNames = listOf(QueueAttributeName.RedrivePolicy, QueueAttributeName.FifoQueue)
+                }
             }
             .bind()
+            .attributes
+    val rawPolicy = attributes?.get(QueueAttributeName.RedrivePolicy) ?: return@either null
 
-    attributes[QueueAttributeName.RedrivePolicy]
-        ?.let { DEFAULT_JSON.decodeFromString<RedrivePolicy>(it) }
-        ?.targetArn
-        ?.let { arn -> "${config.endpointUrl}/${arn.accountId}/${arn.name.value}" }
-        ?.let(Queue::Url)
+    val arn =
+        DEFAULT_JSON.decodeFromString<RedrivePolicy>(rawPolicy)
+            .targetArn
+            .mapLeft { SqsFailure.UnknownFailure(GET_ATTRIBUTES_OP, url.leftIor(), IllegalArgumentException(it)) }
+            .bind()
+
+    if (arn.name.designatesFifo()) {
+        FifoQueueImpl(arn.name, arn.toUrl(config), null, arn)
+    } else {
+        QueueImpl(arn.name, arn.toUrl(config), null, arn)
+    }
 }
 
 internal fun buildAttributes(
