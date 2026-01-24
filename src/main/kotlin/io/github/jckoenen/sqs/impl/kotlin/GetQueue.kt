@@ -5,7 +5,6 @@ import arrow.core.raise.either
 import arrow.core.rightIor
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.getQueueUrl
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.jckoenen.sqs.FifoQueueImpl
 import io.github.jckoenen.sqs.Queue
 import io.github.jckoenen.sqs.QueueImpl
@@ -14,7 +13,6 @@ import io.github.jckoenen.sqs.SqsFailure.GetQueueFailure
 private const val GET_OPERATION = "SQS.GetQueue"
 
 internal suspend fun SqsClient.getQueue(
-    json: ObjectMapper,
     name: Queue.Name,
 ): Either<GetQueueFailure, Queue> = either {
     val url =
@@ -23,7 +21,7 @@ internal suspend fun SqsClient.getQueue(
             }
             .bind()
 
-    val dlqUrl = getDlqUrl(json, url).bind()
+    val dlqUrl = getDlqUrl(url).bind()
 
     // TODO unify
     val dlq =

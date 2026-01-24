@@ -6,7 +6,6 @@ import arrow.core.raise.either
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.createQueue
 import aws.sdk.kotlin.services.sqs.setQueueAttributes
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.jckoenen.sqs.FifoQueueImpl
 import io.github.jckoenen.sqs.Queue
 import io.github.jckoenen.sqs.QueueImpl
@@ -18,12 +17,11 @@ import io.github.jckoenen.sqs.utils.asTags
 import io.github.jckoenen.sqs.utils.putAll
 
 internal suspend fun SqsClient.getOrCreateQueue(
-    json: ObjectMapper,
     name: Queue.Name,
     createDlq: Boolean,
 ): Either<SqsFailure.CreateQueueFailure, Queue> = either {
-    val targetQueueUrl = doCreateQueue(json, name).bind()
-    val existingDlqUrl = getDlqUrl(json, targetQueueUrl).bind()
+    val targetQueueUrl = doCreateQueue(name).bind()
+    val existingDlqUrl = getDlqUrl(targetQueueUrl).bind()
 
     val mainQueue = Ior.Both(targetQueueUrl, name)
 
@@ -31,8 +29,8 @@ internal suspend fun SqsClient.getOrCreateQueue(
         when {
             existingDlqUrl == null && !createDlq -> null
             existingDlqUrl == null -> {
-                val created = doCreateQueue(json, dlqName(name)).bind()
-                attachDlq(targetQueueUrl, json, created).bind()
+                val created = doCreateQueue(dlqName(name)).bind()
+                attachDlq(targetQueueUrl, created).bind()
                 SqsConnector.logger
                     .atInfo()
                     .putAll(mainQueue.asTags())
@@ -40,6 +38,7 @@ internal suspend fun SqsClient.getOrCreateQueue(
                     .log("Configured DLQ for existing queue")
                 created
             }
+
             createDlq -> existingDlqUrl
             else -> {
                 SqsConnector.logger
@@ -67,7 +66,6 @@ internal suspend fun SqsClient.getOrCreateQueue(
 
 private suspend fun SqsClient.attachDlq(
     targetQueueUrl: Queue.Url,
-    json: ObjectMapper,
     created: Queue.Url,
 ) =
     execute(unknownFailure("SQS.SetQueueAttributes", targetQueueUrl)) {
@@ -75,7 +73,6 @@ private suspend fun SqsClient.attachDlq(
             queueUrl = targetQueueUrl.value
             attributes =
                 buildAttributes(
-                    json,
                     redrivePolicy =
                         RedrivePolicy(
                             // TODO: config
@@ -87,18 +84,13 @@ private suspend fun SqsClient.attachDlq(
     }
 
 private suspend fun SqsClient.doCreateQueue(
-    json: ObjectMapper,
     name: Queue.Name,
 ) = either {
     val url =
         execute(unknownFailure("SQS.CreateQueue", name)) {
                 val q = createQueue {
                     queueName = name.value
-                    attributes =
-                        buildAttributes(
-                            json,
-                            isFifo = name.designatesFifo(),
-                        )
+                    attributes = buildAttributes(isFifo = name.designatesFifo())
                 }
                 requireNotNull(q.queueUrl) { "Call did not return a url" }
             }
