@@ -31,6 +31,6 @@ internal data class QueueImpl(
 internal data class FifoQueueImpl(
     override val name: Queue.Name,
     override val url: Queue.Url,
-    override val dlq: Queue?,
+    override val dlq: Queue.Fifo?,
     val arn: QueueArn
 ) : Queue.Fifo
