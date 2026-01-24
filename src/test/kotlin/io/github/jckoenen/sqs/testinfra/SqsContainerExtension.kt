@@ -4,7 +4,6 @@ import aws.sdk.kotlin.runtime.auth.credentials.StaticCredentialsProvider
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.listQueues
 import aws.smithy.kotlin.runtime.net.url.Url
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.github.jckoenen.sqs.Queue
 import io.github.jckoenen.sqs.SqsConnector
 import io.github.jckoenen.sqs.impl.kotlin.KotlinSqsConnector
@@ -74,7 +73,7 @@ internal object SqsContainerExtension : BeforeProjectListener, AfterProjectListe
     }
 
     suspend fun newConnector(clientOverride: SqsClient? = null): SqsConnector =
-        KotlinSqsConnector(clientOverride ?: client.await(), jacksonObjectMapper())
+        KotlinSqsConnector(clientOverride ?: client.await())
 
     fun TestScope.queueName(): Queue.Name =
         testCase.descriptor

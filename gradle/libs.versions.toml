@@ -6,17 +6,21 @@ maven-publish = "0.36.0"
 
 kotlinx-coroutines = "1.10.2"
 kotlinx-datetime = "0.7.1"
+kotlinx-serialization = "1.10.0"
+
 aws-kotlin = "1.6.0"
-jackson = "2.21.0"
+arrow = "2.2.1.1"
+
 slf4j = "2.0.17"
 logback = "1.5.25"
-arrow = "2.2.1.1"
+
 kotest = "6.1.0"
 testcontainers = "2.0.3"
 
 [plugins]
 versions = { id = "com.github.ben-manes.versions", version.ref = "versions" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish"}
 
@@ -27,9 +31,7 @@ kotlin-reflect = {module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = 
 aws-kotlin-bom = { module = "aws.sdk.kotlin:bom", version.ref = "aws-kotlin" }
 aws-kotlin-sqs = { module = "aws.sdk.kotlin:sqs" }
 
-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson" }
-jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind" }
-jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
+kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization"}
 
 kotlinx-coroutines-bom = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-bom", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core" }

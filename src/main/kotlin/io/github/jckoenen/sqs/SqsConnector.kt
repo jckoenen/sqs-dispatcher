@@ -5,7 +5,6 @@ import arrow.core.Ior
 import arrow.core.Nel
 import arrow.core.NonEmptyCollection
 import aws.sdk.kotlin.services.sqs.SqsClient
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.github.jckoenen.sqs.SqsFailure.ChangeMessagesFailure
 import io.github.jckoenen.sqs.SqsFailure.CreateQueueFailure
 import io.github.jckoenen.sqs.SqsFailure.DeleteMessagesFailure
@@ -64,7 +63,7 @@ public interface SqsConnector {
          * @param client the AWS SQS client to use
          * @return a new [SqsConnector] instance
          */
-        public operator fun invoke(client: SqsClient): SqsConnector = KotlinSqsConnector(client, jacksonObjectMapper())
+        public operator fun invoke(client: SqsClient): SqsConnector = KotlinSqsConnector(client)
     }
 
     /**

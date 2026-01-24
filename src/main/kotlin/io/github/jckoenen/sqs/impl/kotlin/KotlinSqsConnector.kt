@@ -3,7 +3,6 @@ package io.github.jckoenen.sqs.impl.kotlin
 import arrow.core.Either
 import arrow.core.NonEmptyCollection
 import aws.sdk.kotlin.services.sqs.SqsClient
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.jckoenen.sqs.BatchResult
 import io.github.jckoenen.sqs.Message
 import io.github.jckoenen.sqs.OutboundMessage
@@ -16,15 +15,15 @@ import kotlin.time.Duration
 
 internal class KotlinSqsConnector(
     private val sqsClient: SqsClient,
-    private val json: ObjectMapper,
 ) : SqsConnector {
+
     override suspend fun getQueue(name: Queue.Name): Either<SqsFailure.GetQueueFailure, Queue> =
-        sqsClient.getQueue(json, name)
+        sqsClient.getQueue(name)
 
     override suspend fun getOrCreateQueue(
         name: Queue.Name,
         createDlq: Boolean,
-    ): Either<SqsFailure.CreateQueueFailure, Queue> = sqsClient.getOrCreateQueue(json, name, createDlq)
+    ): Either<SqsFailure.CreateQueueFailure, Queue> = sqsClient.getOrCreateQueue(name, createDlq)
 
     override suspend fun receiveMessages(
         queue: Queue,

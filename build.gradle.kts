@@ -5,6 +5,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.versions)
     alias(libs.plugins.spotless)
     alias(libs.plugins.maven.publish)
@@ -36,9 +37,7 @@ dependencies {
 
     implementation(libs.kotlinx.datetime)
 
-    implementation(platform(libs.jackson.bom))
-    implementation(libs.jackson.databind)
-    implementation(libs.jackson.kotlin)
+    implementation(libs.kotlinx.serialization)
 
     api(platform(libs.arrow.bom))
     api(libs.arrow.core)
