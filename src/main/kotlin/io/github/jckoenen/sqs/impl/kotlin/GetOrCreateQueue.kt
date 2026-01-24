@@ -27,7 +27,7 @@ internal suspend fun SqsClient.getOrCreateQueue(
     val targetQueue = doCreateQueue(name).bind()
     val existingDlq = getDlq(targetQueue.url).bind()
 
-    val finalDlqUrl =
+    val finalDlq =
         when {
             existingDlq == null && !createDlq -> null
             existingDlq == null -> {
@@ -53,8 +53,17 @@ internal suspend fun SqsClient.getOrCreateQueue(
         }
 
     when (targetQueue) {
-        is FifoQueueImpl -> targetQueue.copy(dlq = finalDlqUrl)
-        is QueueImpl -> targetQueue.copy(dlq = finalDlqUrl)
+        is FifoQueueImpl -> {
+            check(finalDlq == null || finalDlq is Queue.Fifo) { "This is a bug: DLQ of FIFO queue must be FIFO itself" }
+            targetQueue.copy(dlq = finalDlq)
+        }
+
+        is QueueImpl -> {
+            check(finalDlq == null || finalDlq !is Queue.Fifo) {
+                "This is a bug: DLQ of normal queue must be not be FIFO"
+            }
+            targetQueue.copy(dlq = finalDlq)
+        }
     }
 }
 

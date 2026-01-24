@@ -32,8 +32,12 @@ internal suspend fun SqsClient.getQueue(
     val dlq = getDlq(url).bind()
 
     if (name.designatesFifo()) {
+        check(dlq == null || dlq is Queue.Fifo) { "This is a bug: DLQ of FIFO queue must be FIFO itself" }
+
         FifoQueueImpl(name, url, dlq, arn)
     } else {
+        check(dlq == null || dlq !is Queue.Fifo) { "This is a bug: DLQ of normal queue must be not be FIFO" }
+
         QueueImpl(name, url, dlq, arn)
     }
 }
