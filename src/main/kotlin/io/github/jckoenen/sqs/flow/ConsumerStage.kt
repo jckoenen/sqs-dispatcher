@@ -1,6 +1,7 @@
 package io.github.jckoenen.sqs.flow
 
 import arrow.core.Either
+import arrow.core.Nel
 import arrow.core.getOrElse
 import io.github.jckoenen.sqs.Message
 import io.github.jckoenen.sqs.MessageConsumer
@@ -18,7 +19,7 @@ import kotlinx.coroutines.flow.map
 
 private val EXCEPTION_BACKOFF = 1.minutes
 
-internal fun Flow<List<Message<String>>>.applyConsumer(consumer: MessageConsumer, chunkWindow: Duration) =
+internal fun Flow<Nel<Message<String>>>.applyConsumer(consumer: MessageConsumer, chunkWindow: Duration) =
     when (consumer) {
         is MessageConsumer.Individual ->
             flatMapMerge(consumer.configuration.parallelism, List<Message<String>>::asFlow)
@@ -43,7 +44,7 @@ private suspend fun MessageConsumer.Individual.handleSafely(message: Message<Str
         }
         .getOrElse { RetryBackoff(message, EXCEPTION_BACKOFF) }
 
-private suspend fun MessageConsumer.Batch.handleSafely(messages: List<Message<String>>) =
+private suspend fun MessageConsumer.Batch.handleSafely(messages: Nel<Message<String>>) =
     Either.catch { handle(messages) }
         .onLeft {
             SqsConnector.logger

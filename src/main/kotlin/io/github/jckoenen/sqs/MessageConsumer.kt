@@ -1,5 +1,6 @@
 package io.github.jckoenen.sqs
 
+import arrow.core.Nel
 import kotlin.time.Duration
 
 /** A consumer that processes messages from an SQS queue. */
@@ -58,9 +59,12 @@ public sealed interface MessageConsumer {
         /**
          * Handles a batch of messages.
          *
+         * IMPORTANT: Every input message MUST result in an action. Failing to do so with active visibility management
+         * will cause the message to be stuck until the consumer is stopped completely.
+         *
          * @param messages the messages to handle
          * @return a list of [Action]s, one for each input message
          */
-        public suspend fun handle(messages: List<Message<String>>): List<Action>
+        public suspend fun handle(messages: Nel<Message<String>>): Nel<Action>
     }
 }
