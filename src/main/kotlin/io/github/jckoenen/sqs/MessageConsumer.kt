@@ -68,3 +68,47 @@ public sealed interface MessageConsumer {
         public suspend fun handle(messages: Nel<Message<String>>): Nel<Action>
     }
 }
+
+/**
+ * Convenience function to create a [MessageConsumer.Batch].
+ *
+ * @param parallelism the number of batches to process in parallel. Defaults to 1.
+ * @param handleFn the suspendable function to handle a batch of messages and produce corresponding actions.
+ * @return a batch message consumer configured with the specified parallelism and message handling function.
+ */
+public operator fun MessageConsumer.Batch.invoke(
+    parallelism: Int = 1,
+    handleFn: suspend (Nel<Message<String>>) -> Nel<MessageConsumer.Action>
+): MessageConsumer.Batch =
+    object : MessageConsumer.Batch {
+        override suspend fun handle(messages: Nel<Message<String>>): Nel<MessageConsumer.Action> = handleFn(messages)
+
+        override val configuration: MessageConsumer.Configuration
+            get() =
+                object : MessageConsumer.Configuration {
+                    override val parallelism: Int
+                        get() = parallelism
+                }
+    }
+
+/**
+ * Convenience function to create a [MessageConsumer.Individual].
+ *
+ * @param parallelism the number of messages to process in parallel. Defaults to 1.
+ * @param handleFn the suspendable function to handle a batch of messages and produce corresponding actions.
+ * @return a batch message consumer configured with the specified parallelism and message handling function.
+ */
+public operator fun MessageConsumer.Individual.invoke(
+    parallelism: Int = 1,
+    handleFn: suspend (Message<String>) -> MessageConsumer.Action
+): MessageConsumer.Individual =
+    object : MessageConsumer.Individual {
+        override suspend fun handle(message: Message<String>): MessageConsumer.Action = handleFn(message)
+
+        override val configuration: MessageConsumer.Configuration
+            get() =
+                object : MessageConsumer.Configuration {
+                    override val parallelism: Int
+                        get() = parallelism
+                }
+    }

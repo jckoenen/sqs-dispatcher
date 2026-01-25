@@ -37,53 +37,60 @@ val connector = SqsConnector(sqsClient)
 
 ### Consuming Messages
 
-The library provides a powerful `consume` abstraction that returns a `DrainableFlow`.
-This makes it easy to process SQS messages asynchronously.
-SQS's visibility timeouts are (optionally) automatically managed so that messages do not expire while they are being
-handled.
+The library provides a powerful `consume` abstraction that allows to focus on handling messages, abstracting all the plumbing of SQS.
+Messages are automatically received from the queue, the visibility timeout is (by default) extended while they are in flight, and finally the action is taken.
+For better efficiency, messages are batched as needed.
+
+Additionally, the returned `Flow` is `Drainable`, which can be used to gracefully stop after processing messages that are already in flight. 
 
 ```kotlin
-val consumer = object : MessageConsumer.Individual {
-    override val configuration = object : MessageConsumer.Configuration {
-        override val parallelism = 5
-    }
-
-    override suspend fun handle(message: Message<String>): MessageConsumer.Action {
-        println("Processing: ${message.content}")
-        return MessageConsumer.Action.DeleteMessage(message)
-    }
+// setup consumer
+val consumer = MessageConsumer.Individual { message ->
+  println("Processing: ${message.content}")
+  return MessageConsumer.Action.DeleteMessage(message)
 }
 
-runBlocking {
-    val drainControl = connector.consume(Queue.Name("my-queue"), consumer)
-        .launchWithDrainControl(this)
+// connect consumer to a queue
+val drainControl = connector.consume(Queue.Name("my-queue"), consumer)
+    .launchWithDrainControl(this)
 
-    // Later, when you want to shut down gracefully:
-    val completed = withTimeoutOrNull(10.seconds) { drainControl.drainAndJoin() }
+// stop receiving but handle all inflight messages
+val completed = withTimeoutOrNull(10.seconds) { drainControl.drainAndJoin() }
 
-    // Or terminate, if necessary
-    if (completed == null) drainControl.job.cancel()
-}
+// or cancel
+if (completed == null) drainControl.job.cancel()
 ```
 
-## Core Concepts
+### Receiving Messages as Flow
 
-### Fully Typed Error Handling
+To use the full flexibilty of the `Flow` APIs, use `SqsConnector.receive`. The returned flow is also `Drainable`
+
+```kotlin
+// create the stream of messages
+val messages: DrainableFlow<List<Message<String>>> = connector.receive(Queue.Name("my-queue"))
+
+// handle messages
+val control = messages.concatMap { it.asFlow() }
+    .onEach(::println)
+    .onEach { message -> connector.deleteMessages(message.queue.url, nonEmptyListOf(message)) }
+    .drainable()
+    .launchWithDrainControl(scope)
+
+// stop receiving but handle all inflight messages
+control.drainAndJoin()
+```
+
+### Error Handling
 
 Instead of throwing exceptions, this library leverages Arrow's functional types to make error states explicit. Most
 operations return an `Either<Failure, Success>`, forcing you to handle potential errors at compile time. For batch
 operations, we use a `BatchResult` (based on Arrow's `Ior`), which gracefully handles "partial success" scenarios—common
 in SQS when some messages in a batch fail while others succeed.
 
-### Strong Typing
+> [!INFO]
+> When unavoidable, Exceptions are raised when a usage error is detected.
 
-We avoid "stringly-typed" APIs. Identifiers like Queue URLs, Names, and Receipt Handles are wrapped in inline value
-classes (e.g., `Queue.Url`, `Message.ReceiptHandle`). This prevents accidental mix-ups.
-
-### Example: Batch Sending Messages
-
-The `sendMessages` API demonstrates both strong typing and typed error handling. It requires a `NonEmptyCollection` of
-messages, ensuring you never make an invalid empty batch request.
+### Sending Messages
 
 ```kotlin
 val queueUrl = Queue.Url("https://sqs.us-east-1.amazonaws.com/123456789012/my-queue")
@@ -110,8 +117,6 @@ result.fold(
     }
 )
 ```
-
-## Development
 
 ### Prerequisites
 
