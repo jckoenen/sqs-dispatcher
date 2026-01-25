@@ -6,7 +6,6 @@ import arrow.core.Nel
 import arrow.core.NonEmptyCollection
 import aws.sdk.kotlin.services.sqs.SqsClient
 import io.github.jckoenen.sqs.SqsFailure.ChangeMessagesFailure
-import io.github.jckoenen.sqs.SqsFailure.CreateQueueFailure
 import io.github.jckoenen.sqs.SqsFailure.DeleteMessagesFailure
 import io.github.jckoenen.sqs.SqsFailure.GetQueueFailure
 import io.github.jckoenen.sqs.SqsFailure.ReceiveMessagesFailure
@@ -73,18 +72,6 @@ public interface SqsConnector {
      * @return an [Either] containing the [Queue] or a [GetQueueFailure]
      */
     public suspend fun getQueue(name: Queue.Name): Either<GetQueueFailure, Queue>
-
-    /**
-     * Retrieves an existing queue or creates it if it doesn't exist.
-     *
-     * @param name the name of the queue
-     * @param createDlq whether to also create a Dead Letter Queue for this queue
-     * @return an [Either] containing the [Queue] or a [CreateQueueFailure]
-     */
-    public suspend fun getOrCreateQueue(
-        name: Queue.Name,
-        createDlq: Boolean = false,
-    ): Either<CreateQueueFailure, Queue>
 
     /**
      * Receives messages from the specified queue.

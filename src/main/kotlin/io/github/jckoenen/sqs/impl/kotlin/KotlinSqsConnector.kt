@@ -10,6 +10,7 @@ import io.github.jckoenen.sqs.Queue
 import io.github.jckoenen.sqs.SqsConnector
 import io.github.jckoenen.sqs.SqsFailure
 import io.github.jckoenen.sqs.SqsFailure.ChangeMessagesFailure
+import io.github.jckoenen.sqs.SqsFailure.CreateQueueFailure
 import io.github.jckoenen.sqs.SqsFailure.DeleteMessagesFailure
 import kotlin.time.Duration
 
@@ -20,10 +21,18 @@ internal class KotlinSqsConnector(
     override suspend fun getQueue(name: Queue.Name): Either<SqsFailure.GetQueueFailure, Queue> =
         sqsClient.getQueue(name)
 
-    override suspend fun getOrCreateQueue(
+    // TODO: move to test sources or make public
+    /**
+     * Retrieves an existing queue or creates it if it doesn't exist.
+     *
+     * @param name the name of the queue
+     * @param createDlq whether to also create a Dead Letter Queue for this queue
+     * @return an [Either] containing the [Queue] or a [CreateQueueFailure]
+     */
+    internal suspend fun getOrCreateQueue(
         name: Queue.Name,
         createDlq: Boolean,
-    ): Either<SqsFailure.CreateQueueFailure, Queue> = sqsClient.getOrCreateQueue(name, createDlq)
+    ): Either<CreateQueueFailure, Queue> = sqsClient.getOrCreateQueue(name, createDlq)
 
     override suspend fun receiveMessages(
         queue: Queue,
