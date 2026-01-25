@@ -1,6 +1,7 @@
 import com.diffplug.gradle.spotless.BaseKotlinExtension
 import com.diffplug.spotless.kotlin.KtfmtStep
 import com.github.benmanes.gradle.versions.updates.gradle.GradleReleaseChannel
+import com.vanniktech.maven.publish.DeploymentValidation
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
@@ -13,7 +14,7 @@ plugins {
 
 group = "io.github.jckoenen"
 
-version = "0.1"
+version = "0.1.1"
 
 repositories { mavenCentral() }
 
@@ -109,7 +110,7 @@ spotless {
 }
 
 mavenPublishing {
-    publishToMavenCentral(automaticRelease = true, validateDeployment = true)
+    publishToMavenCentral(automaticRelease = true, validateDeployment = DeploymentValidation.VALIDATED)
     signAllPublications()
 
     pom {
