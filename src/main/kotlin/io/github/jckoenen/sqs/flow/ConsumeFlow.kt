@@ -32,25 +32,31 @@ public fun SqsConnector.consume(
     consumer: MessageConsumer,
     enableAutomaticVisibilityExtension: Boolean = true,
     visibilityTimeout: Duration = 30.seconds,
-): DrainableFlow<Nothing> = drainableImpl {
+): DrainableFlow<Nothing> {
     check(visibilityTimeout.isFinite() && visibilityTimeout.isPositive()) {
         "visibilityTimeout must be finite and positive, got $visibilityTimeout"
     }
 
-    val visibilityManager =
-        if (enableAutomaticVisibilityExtension) {
-            VisibilityManager(this@consume, visibilityTimeout, visibilityTimeout * VISIBILITY_OFFSET_FACTOR)
-        } else {
-            null
-        }
+    check(queue !is Queue.Fifo || consumer.configuration.parallelism == 1) {
+        "consumer parallelism for FIFO queues is not supported at the moment"
+    }
 
-    receive(queue, visibilityTimeout)
-        .maybe { visibilityManager?.trackInbound(it) }
-        .applyConsumer(consumer, chunkWindow = visibilityTimeout * CHUNK_WINDOW_FACTOR)
-        .onEach { applyMessageActions(it, queue) }
-        .maybe { visibilityManager?.trackOutbound(it) }
-        .flowOn(mdc(queue.id().asTags()))
-        .collect {}
+    return drainableImpl {
+        val visibilityManager =
+            if (enableAutomaticVisibilityExtension) {
+                VisibilityManager(this@consume, visibilityTimeout, visibilityTimeout * VISIBILITY_OFFSET_FACTOR)
+            } else {
+                null
+            }
+
+        receive(queue, visibilityTimeout)
+            .maybe { visibilityManager?.trackInbound(it) }
+            .applyConsumer(consumer, chunkWindow = visibilityTimeout * CHUNK_WINDOW_FACTOR)
+            .onEach { applyMessageActions(it, queue) }
+            .maybe { visibilityManager?.trackOutbound(it) }
+            .flowOn(mdc(queue.id().asTags()))
+            .collect {}
+    }
 }
 
 /**

@@ -1,19 +1,25 @@
 package io.github.jckoenen.sqs.flow
 
+import arrow.core.Nel
 import arrow.core.PotentiallyUnsafeNonEmptyOperation
 import arrow.core.wrapAsNonEmptyListOrThrow
 import io.github.jckoenen.sqs.Message
+import io.github.jckoenen.sqs.MessageConsumer
 import io.github.jckoenen.sqs.MessageConsumer.Action
 import io.github.jckoenen.sqs.OutboundMessage
 import io.github.jckoenen.sqs.testinfra.ProjectKotestConfiguration.Companion.eventually
 import io.github.jckoenen.sqs.testinfra.SqsContainerExtension
+import io.github.jckoenen.sqs.testinfra.SqsContainerExtension.fifoQueueName
 import io.github.jckoenen.sqs.testinfra.SqsContainerExtension.queueName
 import io.github.jckoenen.sqs.testinfra.TestMessageConsumer
 import io.github.jckoenen.sqs.testinfra.assumeRight
+import io.kotest.assertions.fail
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.currentCoroutineContext
@@ -96,6 +102,25 @@ class ConsumeFlowTest: FreeSpec ({
             }
 
             currentCoroutineContext().job.cancelChildren()
+        }
+
+        "should fail attempting to use FIFO with parallelism" {
+            val queue = connector.getOrCreateQueue(fifoQueueName(), false)
+                .assumeRight()
+
+            val consumer = object : MessageConsumer.Batch {
+                override suspend fun handle(messages: Nel<Message<String>>): Nel<Action> {
+                    fail("should not be called")
+                }
+
+                override val configuration = object : MessageConsumer.Configuration {
+                    override val parallelism: Int
+                        get() = 2
+                }
+            }
+
+            shouldThrowAny { connector.consume(queue, consumer) }
+                .message shouldContain "not supported"
         }
     }
 }
