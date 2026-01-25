@@ -13,7 +13,7 @@ plugins {
 
 group = "io.github.jckoenen"
 
-version = "0.1-SNAPSHOT"
+version = "0.1"
 
 repositories { mavenCentral() }
 
@@ -116,6 +116,7 @@ mavenPublishing {
         name = "SQS Connector"
         description = "Utilities to connect to AWS SQS with a functional interface"
         inceptionYear = "2025"
+        url = "https://github.com/jckoenen/sqs-connector"
         licenses {
             license {
                 name = "The Apache License, Version 2.0"
