@@ -136,3 +136,9 @@ Tests use [Testcontainers](https://www.testcontainers.org/) with LocalStack to p
 ```bash
 ./gradlew spotlessApply
 ```
+
+### Releasing
+
+```bash
+op run --env-file="deploy-secrets.env" -- ./gradlew publishToMavenCentral --no-daemon
+```
