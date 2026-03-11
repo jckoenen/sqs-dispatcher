@@ -7,7 +7,7 @@ import io.github.jckoenen.sqs.Message.GroupId
  *
  * @param T the type of the message content
  */
-public sealed interface Message<out T : Any> : MessageBound {
+public interface Message<out T : Any> : MessageBound {
     /** Unique identifier for a message. */
     @JvmInline public value class Id(public val value: String)
 
@@ -28,7 +28,7 @@ public sealed interface Message<out T : Any> : MessageBound {
     public val groupId: GroupId?
 
     /** Features specific to messages from FIFO queues. */
-    public sealed interface Fifo {
+    public interface Fifo {
         /** The token used for deduplication of sent messages. */
         @JvmInline public value class DeduplicationId(public val value: String)
 

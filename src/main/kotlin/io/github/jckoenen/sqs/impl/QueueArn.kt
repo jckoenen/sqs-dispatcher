@@ -5,9 +5,7 @@ import arrow.core.raise.either
 import arrow.core.raise.ensure
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.smithy.kotlin.runtime.net.url.Url
-import io.github.jckoenen.sqs.FifoQueueImpl
 import io.github.jckoenen.sqs.Queue
-import io.github.jckoenen.sqs.QueueImpl
 
 @ConsistentCopyVisibility
 internal data class QueueArn private constructor(val accountId: String, val region: String, val name: Queue.Name) {
@@ -29,12 +27,6 @@ internal data class QueueArn private constructor(val accountId: String, val regi
     fun toUrl(config: SqsClient.Config) = Queue.Url("${config.endpointUrl}/${accountId}/${name.value}")
 
     companion object {
-        val Queue.arn
-            get() =
-                when (this) {
-                    is FifoQueueImpl -> arn
-                    is QueueImpl -> arn
-                }
 
         fun fromUrl(url: Queue.Url): Either<String, QueueArn> = either {
             val parsed =

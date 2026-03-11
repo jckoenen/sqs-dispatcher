@@ -34,9 +34,9 @@ internal suspend fun SqsClient.getDlq(url: Queue.Url) = either {
             .bind()
 
     if (arn.name.designatesFifo()) {
-        FifoQueueImpl(arn.name, arn.toUrl(config), null, arn)
+        FifoQueueImpl(arn.name, arn.toUrl(config), null)
     } else {
-        QueueImpl(arn.name, arn.toUrl(config), null, arn)
+        QueueImpl(arn.name, arn.toUrl(config), null)
     }
 }
 

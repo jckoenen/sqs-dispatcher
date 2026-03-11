@@ -12,7 +12,6 @@ import io.github.jckoenen.sqs.QueueImpl
 import io.github.jckoenen.sqs.SqsConnector
 import io.github.jckoenen.sqs.SqsFailure
 import io.github.jckoenen.sqs.impl.QueueArn
-import io.github.jckoenen.sqs.impl.QueueArn.Companion.arn
 import io.github.jckoenen.sqs.impl.RedrivePolicy
 import io.github.jckoenen.sqs.utils.asTags
 import io.github.jckoenen.sqs.utils.id
@@ -53,16 +52,16 @@ internal suspend fun SqsClient.getOrCreateQueue(
         }
 
     when (targetQueue) {
-        is FifoQueueImpl -> {
+        is ResolvedQueue.Fifo -> {
             check(finalDlq == null || finalDlq is Queue.Fifo) { "This is a bug: DLQ of FIFO queue must be FIFO itself" }
-            targetQueue.copy(dlq = finalDlq)
+            targetQueue.underlying.copy(dlq = finalDlq)
         }
 
-        is QueueImpl -> {
+        is ResolvedQueue.Default -> {
             check(finalDlq == null || finalDlq !is Queue.Fifo) {
                 "This is a bug: DLQ of normal queue must be not be FIFO"
             }
-            targetQueue.copy(dlq = finalDlq)
+            targetQueue.underlying.copy(dlq = finalDlq)
         }
     }
 }
@@ -106,9 +105,9 @@ private suspend fun SqsClient.doCreateQueue(
 
     val queue =
         if (name.designatesFifo()) {
-            FifoQueueImpl(name, url, null, arn)
+            ResolvedQueue.Fifo(FifoQueueImpl(name, url, null), arn)
         } else {
-            QueueImpl(name, url, null, arn)
+            ResolvedQueue.Default(QueueImpl(name, url, null), arn)
         }
     SqsConnector.logger.atInfo().putAll(queue.id().asTags()).log("Possibly created new queue")
 
@@ -121,3 +120,11 @@ private fun dlqName(source: Queue.Name) =
     } else {
         Queue.Name(source.value + "_dlq")
     }
+
+private sealed interface ResolvedQueue : Queue {
+    val arn: QueueArn
+
+    data class Fifo(val underlying: FifoQueueImpl, override val arn: QueueArn) : ResolvedQueue, Queue.Fifo by underlying
+
+    data class Default(val underlying: QueueImpl, override val arn: QueueArn) : ResolvedQueue, Queue by underlying
+}
